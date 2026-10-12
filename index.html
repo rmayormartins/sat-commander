@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>SAT·COMMANDER — Rastreador Orbital Didático</title>
-<meta name="description" content="Rastreador de satélites em tempo real. Globo 3D realista e mapa 2D, com órbitas LEO, MEO, GEO, HEO e polares. SGP4 + TLE ao vivo do CelesTrak.">
+<title>SAT·COMMANDER · Rastreador Orbital Didático</title>
+<meta name="description" content="Rastreador de satélites em tempo real. Globo 3D realista e mapa 2D, com Starlink completa, GEO, LEO, MEO, HEO e polares. SGP4 + TLE ao vivo do CelesTrak, propagação na GPU.">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -70,7 +70,7 @@ header{position:relative;display:flex;align-items:center;gap:16px;flex-shrink:0;
 .author-sig .sep{color:var(--line2)}
 .author-sig .dash{color:var(--mut2)}
 .viewtoggle{margin-left:auto;display:flex;gap:2px;align-self:flex-start}
-.viewtoggle button{padding:7px 8px;font-size:12px;font-weight:600;letter-spacing:1px;color:var(--mut)}
+.viewtoggle button{padding:7px 8px;font-size:12px;font-weight:600;letter-spacing:1px;color:var(--mut);white-space:nowrap}
 .viewtoggle button::before{content:"[ ";color:var(--line2)}
 .viewtoggle button::after{content:" ]";color:var(--line2)}
 .viewtoggle button.on,.viewtoggle button.on::before,.viewtoggle button.on::after{color:var(--green)}
@@ -89,8 +89,9 @@ main{flex:1;display:flex;min-height:0;position:relative}
 aside{
   width:312px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--line);
   overflow-y:auto;overflow-x:hidden;z-index:40;transition:transform .25s ease}
-.stage{flex:1;position:relative;min-width:0;background:radial-gradient(ellipse at center,#0a1018 0%,#000 100%)}
+.stage{flex:1;position:relative;min-width:0;background:#000;overflow:hidden}
 #view3d,#view2d{position:absolute;inset:0}
+#view3d canvas{display:block;touch-action:none}
 #view2d{display:none}
 #map{width:100%;height:100%;background:#04060c}
 
@@ -109,10 +110,10 @@ aside{
 /* orbit class chips */
 .classrow{display:flex;flex-direction:column;gap:6px}
 .classchip{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;
-  border:1px solid var(--line);background:rgba(255,255,255,.012);transition:.15s;user-select:none}
+  border:1px solid var(--line);background:rgba(255,255,255,.012);transition:.15s;user-select:none;cursor:pointer}
 .classchip:hover{border-color:var(--line2);background:rgba(255,255,255,.03)}
 .classchip.off{opacity:.34}
-.classchip .dot{width:11px;height:11px;border-radius:50%;flex-shrink:0;box-shadow:0 0 8px currentColor}
+.classchip .dot{width:11px;height:11px;border-radius:50%;flex-shrink:0;box-shadow:0 0 8px currentColor;background:currentColor}
 .classchip .nm{font-size:13px;font-weight:600;flex:1}
 .classchip .nm small{display:block;font-size:9.5px;color:var(--mut);font-weight:400;letter-spacing:.3px}
 .classchip .ct{font-family:'JetBrains Mono';font-size:12px;color:var(--mut)}
@@ -163,44 +164,65 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;heigh
 .ritem .cl{font-family:'JetBrains Mono';font-size:9px;color:var(--mut)}
 
 /* ---------- INFO PANEL ---------- */
-.info{position:absolute;top:14px;right:14px;width:268px;background:var(--panel);
+.info{position:absolute;top:14px;right:14px;width:280px;background:var(--panel);
   backdrop-filter:blur(12px);border:1px solid var(--line2);border-radius:12px;
   box-shadow:var(--glow);z-index:30;overflow:hidden;display:none;transform:translateX(8px);opacity:0;
-  transition:opacity .2s, transform .2s}
+  transition:opacity .2s, transform .2s;max-height:calc(100% - 28px);overflow-y:auto}
 .info.show{display:block;transform:none;opacity:1}
 .info-head{padding:13px 14px;display:flex;align-items:flex-start;gap:10px;
   border-bottom:1px solid var(--line);background:linear-gradient(180deg,rgba(255,255,255,.03),transparent)}
-.info-head .tag{width:9px;height:9px;border-radius:50%;margin-top:5px;flex-shrink:0;box-shadow:0 0 10px currentColor}
-.info-head .t{flex:1}
-.info-head .nm{font-size:14.5px;font-weight:700;line-height:1.2}
+.info-head .tag{width:9px;height:9px;border-radius:50%;margin-top:5px;flex-shrink:0;box-shadow:0 0 10px currentColor;background:currentColor}
+.info-head .t{flex:1;min-width:0}
+.info-head .nm{font-size:14.5px;font-weight:700;line-height:1.2;word-break:break-word}
 .info-head .id{font-family:'JetBrains Mono';font-size:10px;color:var(--mut);margin-top:3px;letter-spacing:.5px}
 .info-head .x{color:var(--mut);font-size:18px;line-height:1;cursor:pointer}
 .info-head .x:hover{color:var(--txt)}
 .info-cls{margin:10px 14px 4px;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600;
   letter-spacing:1px;text-align:center;text-transform:uppercase}
-.info-grid{padding:8px 14px 14px;display:grid;grid-template-columns:1fr 1fr;gap:1px;
-  background:var(--line);border-radius:8px;overflow:hidden;margin:8px 12px 12px}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;
+  background:var(--line);border-radius:8px;overflow:hidden;margin:8px 12px 10px}
 .cell{background:var(--panel-solid);padding:9px 10px}
 .cell .k{font-size:9px;letter-spacing:1px;color:var(--mut);text-transform:uppercase}
 .cell .v{font-family:'JetBrains Mono';font-size:13px;color:var(--txt);margin-top:2px}
 .cell .v small{font-size:9.5px;color:var(--mut)}
 .cell.full{grid-column:1 / -1}
+.lit-sun{color:var(--amber)} .lit-ecl{color:#8a9bc0}
+.info-actions{display:flex;gap:6px;padding:0 12px 12px}
+.abtn{flex:1;padding:8px 6px;border:1px solid var(--line2);border-radius:7px;font-size:10.5px;
+  letter-spacing:1px;font-weight:600;color:var(--mut);background:rgba(255,255,255,.02);transition:.15s}
+.abtn:hover{border-color:var(--accent);color:var(--accent)}
+.abtn.on{color:var(--green);border-color:var(--green);background:rgba(74,222,128,.08)}
+.abtn kbd{font-family:inherit;font-size:9px;opacity:.6;margin-left:4px}
+
+/* ---------- HOVER TOOLTIP ---------- */
+#tip{position:absolute;pointer-events:none;z-index:35;padding:4px 8px;border-radius:6px;
+  background:rgba(8,12,18,.88);border:1px solid var(--line2);font:500 11px 'JetBrains Mono',monospace;
+  color:var(--txt-hi);white-space:nowrap;display:none;transform:translate(14px,-50%)}
+#tip i{font-style:normal;display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;vertical-align:1px}
+#tip small{color:var(--mut);margin-left:8px}
 
 /* ---------- LEGEND + STATUS ---------- */
 .legend{position:absolute;bottom:14px;left:14px;z-index:25;background:var(--panel);
   backdrop-filter:blur(10px);border:1px solid var(--line);border-radius:10px;padding:10px 12px;
-  display:flex;flex-direction:column;gap:6px;max-width:200px}
+  display:flex;flex-direction:column;gap:6px;max-width:210px}
 .legend .lt{font-size:9px;letter-spacing:2px;color:var(--mut);text-transform:uppercase;margin-bottom:2px}
 .legend .lt::before{content:"▸ ";color:var(--green)}
 .legend .li{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--mut)}
 .legend .li b{color:var(--txt);font-weight:600}
-.legend .li .d{width:9px;height:9px;border-radius:50%;box-shadow:0 0 7px currentColor}
+.legend .li .d{width:9px;height:9px;border-radius:50%;box-shadow:0 0 7px currentColor;background:currentColor}
+.legend .li .d.ecl{color:#5b6a88;box-shadow:none;opacity:.8}
 .status{position:absolute;bottom:14px;right:14px;z-index:25;display:flex;flex-direction:column;
   gap:5px;align-items:flex-end;pointer-events:none}
 .spill{background:var(--panel);backdrop-filter:blur(8px);border:1px solid var(--line);
   border-radius:7px;padding:5px 11px;font-family:'JetBrains Mono';font-size:11px;color:var(--mut)}
 .spill b{color:var(--accent)}
-.src-ok{color:var(--leo)} .src-bad{color:var(--geo)}
+.src-ok{color:var(--leo)} .src-bad{color:var(--geo)} .src-busy{color:var(--amber)}
+.hud-hint{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);z-index:24;
+  font-size:10px;color:var(--mut2);letter-spacing:.5px;pointer-events:none;white-space:nowrap}
+.hud-hint b{color:var(--mut);font-weight:600}
+@media(max-width:1100px){.hud-hint{display:none}}
+@media(max-width:600px){.legend{display:none}.info{width:auto;left:8px;right:8px;top:auto;bottom:8px;max-height:46%}
+  .info-grid .cell{padding:7px 9px}.info-cls{margin:8px 12px 2px}}
 
 /* ---------- LOADING ---------- */
 #loader{position:absolute;inset:0;z-index:200;background:radial-gradient(circle at 50% 40%,#0a1424,#04060c);
@@ -218,18 +240,6 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;heigh
 .hint{font-size:10px;color:var(--mut2);line-height:1.5;margin-top:8px}
 .linkbtn{font-size:11px;color:var(--accent);text-decoration:none;border-bottom:1px dotted var(--accent)}
 
-/* ---------- identidade commander: ver .topbar / header ---------- */
-
-/* ---------- bloco de autor ---------- */
-.author{padding:16px;margin-top:auto}
-.au-line{height:1px;background:linear-gradient(90deg,var(--line2),transparent);margin-bottom:12px}
-.au-name{font-size:13px;font-weight:700;color:#eaf3ff;letter-spacing:.3px}
-.au-name span{font-family:'JetBrains Mono',monospace;font-weight:600;
-  color:var(--accent);font-size:12px}
-.au-row{font-size:10.5px;color:var(--mut);margin-top:5px;letter-spacing:.3px}
-.au-row a{color:var(--accent);text-decoration:none}
-.au-row a:hover{border-bottom:1px dotted var(--accent)}
-.au-inst{font-size:10px;color:var(--mut2);margin-top:8px;text-transform:uppercase;letter-spacing:1.4px}
 aside{display:flex;flex-direction:column}
 </style>
 </head>
@@ -281,7 +291,7 @@ aside{display:flex;flex-direction:column}
     <div class="sect">
       <h3>Constelações & objetos <span class="ln"></span></h3>
       <div id="catRow"></div>
-      <div class="hint">Ative para baixar os TLEs ao vivo do CelesTrak. Starlink/OneWeb têm milhares de objetos e pesam mais.</div>
+      <div class="hint">Starlink e GEO começam ligados. Ative outros grupos para baixar os TLEs ao vivo do CelesTrak (ficam em cache por 2 h no navegador).</div>
     </div>
 
     <!-- TIME -->
@@ -304,40 +314,48 @@ aside{display:flex;flex-direction:column}
     <div class="sect">
       <h3>Buscar satélite <span class="ln"></span></h3>
       <div class="searchbox">
-        <input id="search" placeholder="ISS, NOAA, GPS, 25544…" autocomplete="off">
+        <input id="search" placeholder="ISS, STARLINK-1007, 25544…" autocomplete="off">
         <div class="results" id="results"></div>
       </div>
     </div>
 
     <div class="sect" style="border-bottom:none">
       <button class="tbtn wide" id="refresh" style="width:100%">⟳ ATUALIZAR TLEs</button>
-      <div class="hint">Dados orbitais por <a class="linkbtn" href="https://celestrak.org" target="_blank" rel="noopener">CelesTrak</a> · propagação SGP4 (satellite.js). Posições calculadas no seu navegador.</div>
+      <div class="hint">Dados orbitais por <a class="linkbtn" href="https://celestrak.org" target="_blank" rel="noopener">CelesTrak</a> · SGP4 (satellite.js) para o satélite selecionado e propagação kepleriana com J2 na GPU para a frota inteira. Tudo calculado no seu navegador.</div>
     </div>
   </aside>
 
   <div class="stage">
     <div id="view3d"></div>
     <div id="view2d"><div id="map"></div></div>
+    <div id="tip"></div>
 
     <!-- INFO PANEL -->
     <div class="info" id="info">
       <div class="info-head">
         <span class="tag" id="iTag"></span>
         <div class="t">
-          <div class="nm" id="iName">—</div>
-          <div class="id mono" id="iId">—</div>
+          <div class="nm" id="iName">-</div>
+          <div class="id mono" id="iId">-</div>
         </div>
-        <span class="x" id="iClose">✕</span>
+        <span class="x" id="iClose" title="Fechar (Esc)">✕</span>
       </div>
-      <div class="info-cls" id="iCls">—</div>
+      <div class="info-cls" id="iCls">-</div>
       <div class="info-grid">
-        <div class="cell"><div class="k">Altitude</div><div class="v" id="iAlt">—</div></div>
-        <div class="cell"><div class="k">Velocidade</div><div class="v" id="iVel">—</div></div>
-        <div class="cell"><div class="k">Latitude</div><div class="v" id="iLat">—</div></div>
-        <div class="cell"><div class="k">Longitude</div><div class="v" id="iLon">—</div></div>
-        <div class="cell"><div class="k">Inclinação</div><div class="v" id="iInc">—</div></div>
-        <div class="cell"><div class="k">Período</div><div class="v" id="iPer">—</div></div>
-        <div class="cell full"><div class="k">Perigeu / Apogeu</div><div class="v" id="iPA">—</div></div>
+        <div class="cell"><div class="k">Altitude</div><div class="v" id="iAlt">-</div></div>
+        <div class="cell"><div class="k">Velocidade</div><div class="v" id="iVel">-</div></div>
+        <div class="cell"><div class="k">Latitude</div><div class="v" id="iLat">-</div></div>
+        <div class="cell"><div class="k">Longitude</div><div class="v" id="iLon">-</div></div>
+        <div class="cell"><div class="k">Inclinação</div><div class="v" id="iInc">-</div></div>
+        <div class="cell"><div class="k">Período</div><div class="v" id="iPer">-</div></div>
+        <div class="cell"><div class="k">Iluminação</div><div class="v" id="iLit">-</div></div>
+        <div class="cell"><div class="k">Cobertura <small>el≥10°</small></div><div class="v" id="iFoot">-</div></div>
+        <div class="cell full"><div class="k">Perigeu / Apogeu</div><div class="v" id="iPA">-</div></div>
+        <div class="cell full" id="iPlaneCell" style="display:none"><div class="k">Mesmo plano orbital</div><div class="v" id="iPlane">-</div></div>
+      </div>
+      <div class="info-actions">
+        <button class="abtn" id="bFollow" title="Câmera acompanha o satélite (F)">◎ SEGUIR<kbd>F</kbd></button>
+        <button class="abtn on" id="bFoot" title="Mostrar a área de cobertura (C)">◍ COBERTURA<kbd>C</kbd></button>
       </div>
     </div>
 
@@ -349,12 +367,15 @@ aside{display:flex;flex-direction:column}
       <div class="li"><span class="d" style="color:var(--meo)"></span><b>MEO</b> 2.000–35.000 km</div>
       <div class="li"><span class="d" style="color:var(--geo)"></span><b>GEO</b> ~35.786 km</div>
       <div class="li"><span class="d" style="color:var(--heo)"></span><b>HEO</b> elíptica alta</div>
+      <div class="li"><span class="d ecl"></span>na sombra da Terra</div>
     </div>
+
+    <div class="hud-hint"><b>arraste</b> girar · <b>scroll</b> zoom · <b>clique</b> selecionar · <b>F</b> seguir · <b>Esc</b> limpar · <b>espaço</b> pausar</div>
 
     <!-- STATUS -->
     <div class="status">
       <div class="spill"><span id="srcStatus" class="src-ok">●</span> <span id="srcText">aguardando</span></div>
-      <div class="spill">objetos: <b id="objCount">0</b></div>
+      <div class="spill">objetos: <b id="objCount">0</b> · <span id="fps">-- fps</span></div>
     </div>
   </div>
 </main>
@@ -375,36 +396,51 @@ aside{display:flex;flex-direction:column}
 
 <script>
 /* ============================================================
-   SAT·COMMANDER  —  rastreador orbital didático
+   SAT·COMMANDER · rastreador orbital didático
    Globo 3D (Three.js) + Mapa 2D (Leaflet) + SGP4 (satellite.js)
+
+   Arquitetura de propagação:
+   - Frota inteira (milhares de satélites): a cada ~2 h de tempo
+     simulado roda-se o SGP4 uma vez por satélite e converte-se o
+     estado (r, v) em elementos keplerianos. A GPU então propaga
+     cada satélite por Kepler + taxas seculares de J2 a cada quadro
+     (movimento suave a 60 fps, erro típico de 10 a 25 km).
+   - Satélite selecionado, rótulos e painel: SGP4 completo a cada quadro.
    ============================================================ */
 
-const RE = 6371.0;            // raio médio da Terra (km) usado na escala visual
-const RE_EQ = 6378.137;       // raio equatorial (km) usado na classificação
+const RE = 6371.0;            // raio médio da Terra (km), escala visual
+const RE_EQ = 6378.137;       // raio equatorial (km), classificação
 const MU = 398600.4418;       // km^3/s^2
-const D2R = Math.PI/180, R2D = 180/Math.PI;
+const D2R = Math.PI/180, R2D = 180/Math.PI, TWO_PI = Math.PI*2;
 const SCALE = 1/RE;           // 1 unidade de cena = raio da Terra
+const REBASE_MS = 2*3600e3;   // re-ancora os elementos a cada 2 h simuladas
+const ELEV_MASK = 10;         // elevação mínima (graus) para a cobertura
+const TLE_TTL = 2*3600e3;     // cache dos TLEs (CelesTrak atualiza a cada ~2 h)
+const TEX = 'https://cdn.jsdelivr.net/npm/three-globe@2.45.4/example/img/';
+const DPR = Math.min(window.devicePixelRatio||1, 2);
+const IS_TOUCH = window.matchMedia && matchMedia('(pointer:coarse)').matches;
 
 /* ---------- categorias / fontes de TLE (grupos do CelesTrak) ---------- */
 const CATS = {
   iss:     {label:'ISS (Zarya)',     sub:'estação · LEO', group:'stations', filter:n=>/ZARYA/i.test(n), on:true,  loaded:false},
   css:     {label:'Tiangong (CSS)',  sub:'estação · LEO', group:'stations', filter:n=>/TIANHE/i.test(n), on:true, loaded:false},
   docked:  {label:'Estação completa', sub:'módulos + naves (Soyuz, Dragon…)', group:'stations', on:false, loaded:false},
-  visual:  {label:'Visuais (brilhantes)', sub:'~150 objetos · LEO', group:'visual', on:true, loaded:false},
-  cubesat: {label:'CubeSats',        sub:'nanossatélites · LEO', group:'cubesat', on:false, loaded:false},
-  last30:  {label:'Lançados (30 dias)', sub:'recentes', group:'last-30-days', on:false, loaded:false, heavy:true},
-  weather: {label:'Meteorológicos',  sub:'NOAA/Metop · polar', group:'weather', on:true, loaded:false},
+  starlink:{label:'Starlink',        sub:'megaconstelação · LEO', group:'starlink', on:true, loaded:false},
+  geo:     {label:'Geoestacionários',sub:'comunicações · GEO', group:'geo',   on:true,  loaded:false},
+  oneweb:  {label:'OneWeb',          sub:'megaconstelação · LEO', group:'oneweb', on:false, loaded:false},
   iridium: {label:'Iridium NEXT',    sub:'comunicações · LEO', group:'iridium-NEXT', on:false, loaded:false},
-  starlink:{label:'Starlink',        sub:'megaconstelação', group:'starlink', on:false, loaded:false, heavy:true},
-  oneweb:  {label:'OneWeb',          sub:'megaconstelação', group:'oneweb',   on:false, loaded:false, heavy:true},
-  gps:     {label:'GPS',             sub:'navegação · MEO', group:'gps-ops',  on:true,  loaded:false},
+  visual:  {label:'Visuais (brilhantes)', sub:'~150 objetos · LEO', group:'visual', on:false, loaded:false},
+  weather: {label:'Meteorológicos',  sub:'NOAA/Metop · polar', group:'weather', on:false, loaded:false},
+  cubesat: {label:'CubeSats',        sub:'nanossatélites · LEO', group:'cubesat', on:false, loaded:false},
+  last30:  {label:'Lançados (30 dias)', sub:'recentes', group:'last-30-days', on:false, loaded:false},
+  gps:     {label:'GPS',             sub:'navegação · MEO', group:'gps-ops',  on:false, loaded:false},
   glonass: {label:'GLONASS',         sub:'navegação · MEO', group:'glo-ops',  on:false, loaded:false},
   galileo: {label:'Galileo',         sub:'navegação · MEO', group:'galileo',  on:false, loaded:false},
   beidou:  {label:'BeiDou',          sub:'navegação · MEO', group:'beidou',   on:false, loaded:false},
-  molniya: {label:'Molniya',         sub:'órbita elíptica · HEO', group:'molniya', on:true, loaded:false},
-  geo:     {label:'Geoestacionários',sub:'comunicações · GEO', group:'geo',   on:true,  loaded:false, heavy:true},
+  molniya: {label:'Molniya',         sub:'órbita elíptica · HEO', group:'molniya', on:false, loaded:false},
   science: {label:'Científicos',     sub:'observação',      group:'science',  on:false, loaded:false},
 };
+const CONSTELLATIONS = new Set(['starlink','oneweb','iridium','gps','glonass','galileo','beidou']);
 
 const CLASS_COLORS = {
   LEO:  {hex:0x56d4dd, css:'var(--leo)',   label:'LEO'},
@@ -416,15 +452,18 @@ const CLASS_COLORS = {
 const classOn = {LEO:true, POLAR:true, MEO:true, GEO:true, HEO:true};
 
 /* ---------- estado ---------- */
-let sats = [];                // {name, satrec, cat, cls, color, lat, lon, alt, vel, period, inc, peri, apo}
+let sats = [];                // ver ingest()
 let visible = [];             // subconjunto desenhado
-let selected = null;
+let selected = null, hovered = null;
 let simTime = new Date();
 let speed = 1, paused = false, lastReal = performance.now();
+let tRef = null;              // instante (ms) da última re-ancoragem dos elementos
+let gmstNow = 0;
+let showFoot = true, follow = false;
 const SPEEDS = [1,5,20,60,120,300,600,1800,3600,7200];
 
 /* ============================================================
-   1) TLE — fallback embutido (funciona offline) + fetch ao vivo
+   1) TLE: fallback embutido (funciona offline) + fetch ao vivo
    ============================================================ */
 const FALLBACK_TLE = `ISS (ZARYA)
 1 25544U 98067A   24300.50000000  .00016717  00000+0  30000-3 0  9990
@@ -461,7 +500,7 @@ MOLNIYA 3-50 (HEO)
 2 25847  63.4000 280.0000 7100000 270.0000  10.0000  2.00600000110000`;
 
 /* parser de TLE de 3 linhas */
-function parseTLE(text, catKey){
+function parseTLE(text){
   const lines = text.replace(/\r/g,'').split('\n');
   const out = [];
   for(let i=0;i<lines.length;i++){
@@ -470,8 +509,7 @@ function parseTLE(text, catKey){
     if(l1 && l2 && l1[0]==='1' && l2[0]==='2'){
       try{
         const satrec = satellite.twoline2satrec(l1.trim(), l2.trim());
-        if(satrec.error) { i+=2; continue; }
-        out.push({name:nm, satrec, satnum:satrec.satnum});
+        if(!satrec.error) out.push({name:nm, satrec, satnum:satrec.satnum});
       }catch(e){}
       i+=2;
     }
@@ -488,7 +526,7 @@ function classify(satrec){
   const meanAlt = a - RE_EQ;
   const peri = a*(1-e) - RE_EQ;
   const apo  = a*(1+e) - RE_EQ;
-  const periodMin = (2*Math.PI/satrec.no);    // satrec.no em rad/min
+  const periodMin = (2*Math.PI/satrec.no);
   let cls;
   if(e > 0.25) cls = 'HEO';
   else if(meanAlt >= 31000 && inc < 20) cls = 'GEO';
@@ -497,57 +535,97 @@ function classify(satrec){
   return {cls, e, inc, peri, apo, meanAlt, periodMin};
 }
 
-function ingest(raw, catKey){
+function ingest(raw, catKey, fb){
+  const bySn = new Map(sats.map(s=>[s.satnum,s]));
+  const drop = new Set();
   for(const r of raw){
-    if(sats.some(s=>s.satnum===r.satnum)) continue;   // evita duplicar
+    const ex = bySn.get(r.satnum);
+    if(ex){                                  // evita duplicar; dado real substitui o exemplo
+      if(ex.fb && !fb) drop.add(ex); else continue;
+    }
     const c = classify(r.satrec);
-    sats.push({
+    const s = {
       name:r.name, satrec:r.satrec, satnum:r.satnum, cat:catKey, cls:c.cls,
-      color:CLASS_COLORS[c.cls].hex, inc:c.inc, peri:c.peri, apo:c.apo,
-      period:c.periodMin, lat:0, lon:0, alt:0, vel:0, ecef:new THREE.Vector3()
-    });
+      color:CLASS_COLORS[c.cls].hex, inc:c.inc, peri:c.peri, apo:c.apo, period:c.periodMin,
+      el:new Float64Array(9), ok:false, hi:false, vi:-1,
+      p:new THREE.Vector3(), lat:0, lon:0, alt:0, vel:0, fb:!!fb
+    };
+    if(tRef!==null) rebaseSat(s, tRef);
+    bySn.set(r.satnum, s);
+    sats.push(s);
+  }
+  if(drop.size){
+    if(selected && drop.has(selected)) closeInfo();
+    sats = sats.filter(s=>!drop.has(s));
   }
 }
 
-/* fetch de um grupo do CelesTrak */
-async function fetchGroup(group){
+/* ---------- cache dos TLEs (Cache API, não ocupa o localStorage do domínio) ---------- */
+const CACHE_NAME = 'sat-commander-tle-v1';
+async function cacheGet(url){
+  try{
+    if(!('caches' in window)) return null;
+    const c = await caches.open(CACHE_NAME); const r = await c.match(url);
+    if(!r) return null;
+    return {t:+(r.headers.get('x-fetched')||0), txt:await r.text()};
+  }catch(e){ return null; }
+}
+async function cachePut(url, txt){
+  try{
+    if(!('caches' in window)) return;
+    const c = await caches.open(CACHE_NAME);
+    await c.put(url, new Response(txt, {headers:{'content-type':'text/plain','x-fetched':String(Date.now())}}));
+  }catch(e){}
+}
+
+/* fetch de um grupo do CelesTrak (com cache e de-duplicação) */
+const inflight = {};
+function fetchGroup(group, force){
+  const key = group+(force?':f':'');
+  if(inflight[key]) return inflight[key];
   const url = `https://celestrak.org/NORAD/elements/gp.php?GROUP=${group}&FORMAT=tle`;
-  const res = await fetch(url, {cache:'no-store'});
-  if(!res.ok) throw new Error('HTTP '+res.status);
-  const txt = await res.text();
-  if(!txt || txt.indexOf('1 ')<0) throw new Error('vazio');
-  return txt;
+  inflight[key] = (async()=>{
+    const cached = await cacheGet(url);
+    if(!force && cached && Date.now()-cached.t < TLE_TTL) return {txt:cached.txt, from:'cache'};
+    try{
+      const res = await fetch(url, {cache:'no-store'});
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      const txt = await res.text();
+      if(!txt || !/^1 /m.test(txt)) throw new Error('vazio');
+      cachePut(url, txt);
+      return {txt, from:'live'};
+    }catch(e){
+      if(cached && cached.txt) return {txt:cached.txt, from:'stale'};
+      throw e;
+    }
+  })().finally(()=>{ delete inflight[key]; });
+  return inflight[key];
 }
 
 /* carrega/recarrega uma categoria */
-let loadingCount = 0;
-async function loadCat(key, viaUI){
+async function loadCat(key, force){
   const cat = CATS[key];
   setSwitch(key,'busy');
+  setSrc('busy', 'baixando '+cat.label+'…');
   try{
-    const txt = await fetchGroup(cat.group);
-    let raw = parseTLE(txt, key);
+    const {txt, from} = await fetchGroup(cat.group, force);
+    let raw = parseTLE(txt);
     if(cat.filter) raw = raw.filter(r=>cat.filter(r.name));
-    // limita megaconstelações para manter fluido
-    if(cat.heavy && raw.length>2500) raw = raw.slice(0,2500);
     sats = sats.filter(s=>s.cat!==key);   // troca exemplo/antigo por dado fresco
     ingest(raw, key);
     cat.loaded = true;
-    flagSource(true);
+    flagSource(from!=='stale', from);
   }catch(e){
-    // fallback: usa o que tiver embutido para essa categoria
     if(!cat.loaded){
-      let raw = parseTLE(FALLBACK_TLE, key);
-      if(cat.filter) raw = raw.filter(r=>cat.filter(r.name));
-      else raw = raw.filter(r=>guessCat(r.name)===key);
+      let raw = parseTLE(FALLBACK_TLE);
+      raw = cat.filter ? raw.filter(r=>cat.filter(r.name)) : raw.filter(r=>guessCat(r.name)===key);
       sats = sats.filter(s=>s.cat!==key);
-      ingest(raw, key);
+      ingest(raw, key, true);
     }
     flagSource(false);
   }
   setSwitch(key, cat.on?'on':'off');
   rebuild();
-  updateCounts();
 }
 
 /* heurística para distribuir o fallback nas categorias certas */
@@ -564,149 +642,330 @@ function guessCat(n){
 }
 
 /* ============================================================
-   2) THREE.JS — globo realista
+   2) PROPAGAÇÃO: SGP4 -> elementos keplerianos (re-ancoragem)
    ============================================================ */
-let scene, camera, renderer, controls, earth, atmo, satPoints, satGeom;
-let trailLine, selMarker;
+const _d = new Date();
+function rebaseSat(s, tms){
+  _d.setTime(tms);
+  let pv = null;
+  try{ pv = satellite.propagate(s.satrec, _d); }catch(e){}
+  const r = pv && pv.position, v = pv && pv.velocity;
+  if(!r || !v || !isFinite(r.x)){ s.ok=false; return; }
+  const rm = Math.hypot(r.x,r.y,r.z), v2 = v.x*v.x+v.y*v.y+v.z*v.z;
+  const hx = r.y*v.z-r.z*v.y, hy = r.z*v.x-r.x*v.z, hz = r.x*v.y-r.y*v.x, hm = Math.hypot(hx,hy,hz);
+  const rv = r.x*v.x+r.y*v.y+r.z*v.z, k = v2-MU/rm;
+  const ex = (k*r.x-rv*v.x)/MU, ey = (k*r.y-rv*v.y)/MU, ez = (k*r.z-rv*v.z)/MU;
+  const e = Math.hypot(ex,ey,ez);
+  const a = 1/(2/rm - v2/MU);
+  if(!(a>0) || e>=0.98 || a*(1-e) < RE_EQ*0.97){ s.ok=false; return; }
+  const inc = Math.acos(Math.max(-1,Math.min(1,hz/hm)));
+  const nx = -hy, ny = hx;
+  const raan = Math.hypot(nx,ny) > 1e-9*hm ? Math.atan2(ny,nx) : 0;
+  const cO=Math.cos(raan), sO=Math.sin(raan), ci=Math.cos(inc), si=Math.sin(inc);
+  const qx=-sO*ci, qy=cO*ci, qz=si;           // h x (linha dos nodos)
+  const u = Math.atan2(r.x*qx+r.y*qy+r.z*qz, r.x*cO+r.y*sO);
+  let argp = 0, nu = u;
+  if(e > 1e-7){ argp = Math.atan2(ex*qx+ey*qy+ez*qz, ex*cO+ey*sO); nu = u-argp; }
+  const E = Math.atan2(Math.sqrt(1-e*e)*Math.sin(nu), e+Math.cos(nu));
+  const M = E - e*Math.sin(E);
+  const el = s.el, sr = s.satrec;
+  el[0]=a/RE; el[1]=e; el[2]=inc; el[3]=raan; el[4]=argp; el[5]=M;
+  el[6]=sr.mdot/60; el[7]=sr.argpdot/60; el[8]=sr.nodedot/60;   // rad/s (inclui J2)
+  s.ok = true;
+}
+function rebaseAll(tms){
+  tRef = tms;
+  for(const s of sats) rebaseSat(s, tms);
+  uploadSats();
+}
+
+/* mesma conta da GPU, em JS (picking, hover, mapa 2D) */
+function kepScene(s, dt, gm, out){
+  const el=s.el, e=el[1];
+  const M=el[5]+el[6]*dt, w=el[4]+el[7]*dt, O=el[3]+el[8]*dt;
+  let E = e<0.8 ? M : Math.PI;
+  for(let k=0;k<6;k++) E -= (E-e*Math.sin(E)-M)/(1-e*Math.cos(E));
+  const xo=el[0]*(Math.cos(E)-e), yo=el[0]*Math.sqrt(1-e*e)*Math.sin(E);
+  const cw=Math.cos(w), sw=Math.sin(w), cO=Math.cos(O), sO=Math.sin(O), ci=Math.cos(el[2]), si=Math.sin(el[2]);
+  const x1=xo*cw-yo*sw, y1=xo*sw+yo*cw;
+  const x=x1*cO-y1*ci*sO, y=x1*sO+y1*ci*cO, z=y1*si;
+  const cg=Math.cos(gm), sg=Math.sin(gm);
+  const xe=x*cg+y*sg, ye=-x*sg+y*cg;
+  return out.set(xe, z, -ye);
+}
+let cpuStamp = -1;
+function computeCPU(){
+  const tms = simTime.getTime();
+  if(cpuStamp===tms) return;
+  cpuStamp = tms;
+  const dt = (tms-tRef)/1000;
+  for(const s of visible){
+    if(!s.ok) continue;
+    kepScene(s, dt, gmstNow, s.p);
+    const p=s.p, r=p.length();
+    s.lat = Math.asin(p.y/r)*R2D; s.lon = Math.atan2(-p.z, p.x)*R2D; s.alt = (r-1)*RE;
+  }
+}
+
+/* ============================================================
+   3) THREE.JS: globo realista
+   ============================================================ */
+let scene, camera, renderer, controls, earth, atmo, satPoints, satMat;
 const sunDir = new THREE.Vector3(1,0,0);
-const TEX = 'https://cdn.jsdelivr.net/npm/three-globe/example/img/';
+const resVec = new THREE.Vector2(1,1);
+const PX_UNIFORM = {value:0.001};   // unidades de visão por pixel a 1 unidade de distância
+let sunLight;
 
 function setLoad(t){ document.getElementById('loadStatus').textContent = t; }
+
+const SAT_VS = `
+attribute vec4 aB; attribute vec4 aC;
+uniform float uDt, uGmst, uBase, uSel, uFocus;
+uniform vec3 uSun;
+varying vec3 vC; varying float vLit; varying float vHi; varying float vF;
+void main(){
+  float a=position.x, e=position.y, inc=position.z;
+  float O=aB.x + aC.y*uDt;
+  float w=aB.y + aC.x*uDt;
+  float M=mod(aB.z + aB.w*uDt, 6.2831853);
+  float E = e<0.8 ? M : 3.1415927;
+  for(int k=0;k<6;k++){ E = E - (E - e*sin(E) - M)/(1.0 - e*cos(E)); }
+  float xo=a*(cos(E)-e), yo=a*sqrt(1.0-e*e)*sin(E);
+  float cw=cos(w), sw=sin(w), cO=cos(O), sO=sin(O), ci=cos(inc), si=sin(inc);
+  float x1=xo*cw-yo*sw, y1=xo*sw+yo*cw;
+  vec3 eci=vec3(x1*cO-y1*ci*sO, x1*sO+y1*ci*cO, y1*si);
+  float cg=cos(uGmst), sg=sin(uGmst);
+  vec3 p=vec3(eci.x*cg+eci.y*sg, eci.z, -(-eci.x*sg+eci.y*cg));
+  /* sombra cilíndrica da Terra */
+  float d=dot(p,uSun);
+  float lit = d>0.0 ? 1.0 : smoothstep(0.985, 1.03, length(p-d*uSun));
+  vLit=lit;
+  vHi = aC.w>1.5 ? 1.0 : 0.0;
+  vC = color; vF = mix(uFocus, 1.25, vHi);
+  vec4 mv=modelViewMatrix*vec4(p,1.0);
+  float sz = uBase * clamp(7.0 / -mv.z, 1.0, 2.6) * mix(0.75,1.0,lit) * (1.0+0.5*vHi);
+  gl_PointSize = sz;
+  gl_Position = projectionMatrix*mv;
+  if(aC.w<0.5 || abs(aC.z-uSel)<0.5) gl_Position = vec4(2.0,2.0,2.0,1.0);
+}`;
+const SAT_FS = `
+varying vec3 vC; varying float vLit; varying float vHi; varying float vF;
+void main(){
+  vec2 q=gl_PointCoord-0.5; float r2=dot(q,q)*4.0;
+  if(r2>1.0) discard;
+  float core=exp(-r2*16.0), halo=exp(-r2*3.5)*0.36;
+  vec3 lit = vC*halo*1.5 + mix(vC, vec3(1.0), 0.55)*core;
+  vec3 ecl = (vC*0.25+vec3(0.22,0.27,0.40))*(core*0.55+halo*0.25);
+  gl_FragColor = vec4(mix(ecl, lit, vLit)*vF, 1.0);
+}`;
+
+/* ribbon: linha grossa em espaço de tela (largura em px) */
+const RIB_VS = `
+attribute vec3 aPrev; attribute vec3 aNext; attribute float aSide; attribute float aU;
+uniform float uPx, uWidth;
+varying float vU; varying float vSide;
+void main(){
+  /* fita voltada para a câmera, construída em espaço de visão: largura constante em
+     pixels e recorte correto no plano próximo (sem artefatos quando passa perto da câmera) */
+  vec4 c=modelViewMatrix*vec4(position,1.0);
+  vec3 T=(modelViewMatrix*vec4(aNext,1.0)).xyz-(modelViewMatrix*vec4(aPrev,1.0)).xyz;
+  vec3 N=cross(T, normalize(c.xyz));
+  N = length(N)<1e-12 ? vec3(0.0,1.0,0.0) : normalize(N);
+  c.xyz += N*aSide*uWidth*0.5*uPx*max(-c.z,1e-4);
+  gl_Position=projectionMatrix*c; vU=aU; vSide=aSide;
+}`;
+const RIB_FS = `
+uniform vec3 uColor; uniform float uHead, uReveal, uMin, uMode, uTime, uAlpha;
+varying float vU; varying float vSide;
+void main(){
+  float a = abs(vSide);
+  float edge = (1.0 - smoothstep(0.18, 0.42, a)) + 0.42*(1.0-a)*(1.0-a);   /* núcleo + brilho */
+  float I;
+  if(uMode < 0.5){                           /* órbita fechada */
+    float ah = fract(vU - uHead);            /* 0 no satélite, cresce à frente */
+    if(ah > uReveal) discard;
+    I = uMin + (1.0-uMin)*pow(ah, 6.0);      /* cauda brilhante logo atrás */
+    float ph = fract(uTime*0.2); float dp = ah-ph;
+    I += 0.8*exp(-dp*dp*1800.0)*(1.0-ph);    /* pulso correndo à frente */
+    if(uReveal < 0.999){ float d=uReveal-ah; I += 2.2*exp(-d*d*1500.0); }
+  } else if(uMode < 1.5){                    /* traço no solo (aberto) */
+    float ah = vU - uHead;
+    if(ah < -0.12 || ah > uReveal) discard;
+    I = ah < 0.0 ? 0.30*(1.0+ah/0.12) : mix(0.75, 0.10, ah);
+    if(uReveal < 0.999){ float d=uReveal-ah; I += 1.2*exp(-d*d*3000.0); }
+  } else {                                   /* contorno da cobertura */
+    I = 0.45 + 0.5*step(0.5, fract(vU*60.0 - uTime*0.6));
+  }
+  vec3 col = mix(uColor, vec3(1.0), clamp(I-0.8, 0.0, 1.0)*0.6);
+  gl_FragColor = vec4(col*I*edge*uAlpha, 1.0);
+}`;
 
 function initThree(){
   const host = document.getElementById('view3d');
   scene = new THREE.Scene();
   camera = new THREE.PerspectiveCamera(42, host.clientWidth/host.clientHeight, 0.01, 1000);
-  camera.position.set(0, 3.6, 11.2);   // visão afastada: enquadra de LEO a GEO
 
   renderer = new THREE.WebGLRenderer({antialias:true, alpha:false, powerPreference:'high-performance'});
-  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  renderer.setPixelRatio(DPR);
   renderer.setSize(host.clientWidth, host.clientHeight);
   renderer.setClearColor(0x000000, 1);
   host.appendChild(renderer.domElement);
+  renderer.getDrawingBufferSize(resVec);
 
   controls = new THREE.OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true; controls.dampingFactor = .06;
-  controls.minDistance = 1.25; controls.maxDistance = 60;
-  controls.rotateSpeed = .55; controls.zoomSpeed = .9;
+  controls.enableDamping = true; controls.dampingFactor = .07;
+  controls.minDistance = 1.15; controls.maxDistance = 60;
+  controls.rotateSpeed = .5; controls.zoomSpeed = .9; controls.enablePan = false;
 
-  // estrelas
+  // câmera inicial voltada para o Brasil, chegando de longe
+  const camDir = llDir(-18, -50, new THREE.Vector3());
+  camera.position.copy(camDir).multiplyScalar(38);
+  introTween(camDir);
+
   scene.add(makeStars());
+
+  // luzes (só afetam o modelo 3D do satélite selecionado)
+  sunLight = new THREE.DirectionalLight(0xffffff, 2.1);
+  scene.add(sunLight); scene.add(sunLight.target);
+  scene.add(new THREE.AmbientLight(0x6a7896, 0.45));
 
   // texturas
   const loader = new THREE.TextureLoader(); loader.crossOrigin = 'anonymous';
+  const aniso = renderer.capabilities.getMaxAnisotropy ? renderer.capabilities.getMaxAnisotropy() : 4;
   const day   = loader.load(TEX+'earth-blue-marble.jpg', ()=>setLoad('texturas carregadas'));
   const night = loader.load(TEX+'earth-night.jpg');
-  day.anisotropy = renderer.capabilities.getMaxAnisotropy?.() || 4;
+  const bump  = loader.load(TEX+'earth-topology.png');
+  const water = loader.load(TEX+'earth-water.png');
+  day.anisotropy = night.anisotropy = aniso;
 
-  // Terra com shader dia/noite
+  // Terra: dia/noite, relevo, reflexo do Sol nos oceanos, borda atmosférica
   const earthMat = new THREE.ShaderMaterial({
-    uniforms:{ dayTex:{value:day}, nightTex:{value:night}, sunDir:{value:sunDir} },
+    uniforms:{ dayTex:{value:day}, nightTex:{value:night}, bumpTex:{value:bump}, waterTex:{value:water},
+      sunDir:{value:sunDir}, texel:{value:new THREE.Vector2(1/2048,1/1024)}, bumpK:{value:2.2} },
     vertexShader:`
-      varying vec2 vUv; varying vec3 vN;
+      varying vec2 vUv; varying vec3 vN; varying vec3 vW;
       void main(){ vUv=uv; vN=normalize(mat3(modelMatrix)*normal);
-        gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+        vec4 w=modelMatrix*vec4(position,1.0); vW=w.xyz;
+        gl_Position=projectionMatrix*viewMatrix*w; }`,
     fragmentShader:`
-      uniform sampler2D dayTex; uniform sampler2D nightTex; uniform vec3 sunDir;
-      varying vec2 vUv; varying vec3 vN;
+      uniform sampler2D dayTex, nightTex, bumpTex, waterTex;
+      uniform vec3 sunDir; uniform vec2 texel; uniform float bumpK;
+      varying vec2 vUv; varying vec3 vN; varying vec3 vW;
       void main(){
-        float c = dot(normalize(vN), normalize(sunDir));
-        float t = smoothstep(-0.10, 0.28, c);
-        vec3 d = texture2D(dayTex, vUv).rgb;
-        vec3 n = texture2D(nightTex, vUv).rgb * 1.7;
-        // brilho atmosférico no terminador
-        float term = smoothstep(0.0,0.18,abs(c))*(1.0-smoothstep(0.18,0.45,abs(c)));
-        vec3 col = mix(n, d, t) + vec3(0.05,0.12,0.22)*term*0.6;
-        gl_FragColor = vec4(col,1.0);
+        vec3 N=normalize(vN);
+        vec3 east=normalize(cross(vec3(0.0,1.0,0.0),N)+vec3(1e-5,0.0,0.0));
+        vec3 north=cross(N,east);
+        float hL=texture2D(bumpTex,vUv-vec2(texel.x,0.0)).r, hR=texture2D(bumpTex,vUv+vec2(texel.x,0.0)).r;
+        float hD=texture2D(bumpTex,vUv-vec2(0.0,texel.y)).r, hU=texture2D(bumpTex,vUv+vec2(0.0,texel.y)).r;
+        vec3 Nb=normalize(N - bumpK*((hR-hL)*east + (hU-hD)*north));
+        vec3 S=normalize(sunDir);
+        vec3 V=normalize(cameraPosition-vW);
+        float cS=dot(N,S);
+        float day=smoothstep(-0.10,0.20,cS);
+        vec3 dcol=texture2D(dayTex,vUv).rgb;
+        dcol=pow(dcol,vec3(1.1))*1.12;
+        float lam=clamp(dot(Nb,S),0.0,1.0);
+        vec3 col=dcol*(0.18+0.95*lam)*day;
+        vec3 ncol=texture2D(nightTex,vUv).rgb;
+        float night=1.0-smoothstep(-0.22,0.06,cS);
+        ncol = pow(ncol, vec3(1.7))*2.6;            /* realça as luzes e apaga o fundo azulado */
+        col += ncol*vec3(1.30,1.02,0.72)*night + vec3(0.006,0.010,0.022)*night;
+        float water=texture2D(waterTex,vUv).r;
+        vec3 H=normalize(S+V); float nh=max(dot(N,H),0.0);
+        col += (vec3(1.0,0.90,0.74)*pow(nh,90.0)*0.85 + vec3(0.55,0.72,1.0)*pow(nh,10.0)*0.07)*water*day;
+        float term=exp(-pow(cS/0.11,2.0));
+        col += vec3(0.32,0.11,0.02)*term*0.22;
+        float fres=pow(1.0-max(dot(N,V),0.0),3.0);
+        col += vec3(0.30,0.56,1.0)*fres*(0.08+0.9*smoothstep(-0.25,0.55,cS))*0.75;
+        gl_FragColor=vec4(col,1.0);
       }`
   });
-  earth = new THREE.Mesh(new THREE.SphereGeometry(1, 96, 96), earthMat);
+  earth = new THREE.Mesh(new THREE.SphereGeometry(1, 128, 96), earthMat);
   scene.add(earth);
 
-  // atmosfera (glow)
+  // atmosfera (halo) iluminada pelo Sol, com tom de crepúsculo no terminador
   const atmoMat = new THREE.ShaderMaterial({
     uniforms:{ sunDir:{value:sunDir} },
-    vertexShader:`varying vec3 vN; varying vec3 vP;
-      void main(){ vN=normalize(normalMatrix*normal); vec4 mv=modelViewMatrix*vec4(position,1.0);
-        vP=mv.xyz; gl_Position=projectionMatrix*mv; }`,
-    fragmentShader:`varying vec3 vN; varying vec3 vP;
+    vertexShader:`varying vec3 vNw; varying vec3 vW;
+      void main(){ vNw=normalize(mat3(modelMatrix)*normal); vec4 w=modelMatrix*vec4(position,1.0); vW=w.xyz;
+        gl_Position=projectionMatrix*viewMatrix*w; }`,
+    fragmentShader:`uniform vec3 sunDir; varying vec3 vNw; varying vec3 vW;
       void main(){
-        float i = pow(0.62 - dot(vN, vec3(0.0,0.0,1.0)), 3.0);
-        i = clamp(i,0.0,1.0);
-        gl_FragColor = vec4(0.30,0.62,1.0,1.0)*i;
+        vec3 V=normalize(cameraPosition-vW);
+        float t=clamp(-dot(normalize(vNw),V)/0.34,0.0,1.0);
+        float g=pow(t,2.4);
+        float s=dot(normalize(vW),normalize(sunDir));
+        float dayk=smoothstep(-0.35,0.35,s);
+        vec3 c=mix(vec3(0.05,0.10,0.26)*0.6, vec3(0.30,0.60,1.0), dayk);
+        c += vec3(1.0,0.42,0.12)*exp(-pow(s/0.16,2.0))*0.55;
+        gl_FragColor=vec4(c*g*1.15,1.0);
       }`,
     blending:THREE.AdditiveBlending, side:THREE.BackSide, transparent:true, depthWrite:false
   });
-  atmo = new THREE.Mesh(new THREE.SphereGeometry(1.035, 64, 64), atmoMat);
+  atmo = new THREE.Mesh(new THREE.SphereGeometry(1.06, 96, 64), atmoMat);
   scene.add(atmo);
 
-  // grupo de satélites (Points)
-  satGeom = new THREE.BufferGeometry();
-  satGeom.setAttribute('position', new THREE.BufferAttribute(new Float32Array(3),3));
-  satGeom.setAttribute('color', new THREE.BufferAttribute(new Float32Array(3),3));
-  const satMat = new THREE.ShaderMaterial({
-    uniforms:{ sz:{value:7.0*Math.min(devicePixelRatio,2)} },
-    vertexShader:`attribute vec3 color; varying vec3 vC; uniform float sz;
-      void main(){ vC=color; vec4 mv=modelViewMatrix*vec4(position,1.0);
-        gl_PointSize = sz * (1.0/ -mv.z) * 8.0;
-        gl_PointSize = clamp(gl_PointSize, 3.0, 22.0);
-        gl_Position=projectionMatrix*mv; }`,
-    fragmentShader:`varying vec3 vC;
-      void main(){ vec2 d=gl_PointCoord-vec2(0.5); float r=length(d);
-        if(r>0.5) discard;
-        float a = smoothstep(0.5,0.18,r);
-        vec3 col = vC + (1.0-smoothstep(0.0,0.42,r))*0.6;
-        gl_FragColor=vec4(col, a); }`,
+  // frota de satélites (Points, propagados na GPU)
+  satMat = new THREE.ShaderMaterial({
+    uniforms:{ uDt:{value:0}, uGmst:{value:0}, uBase:{value:4.2*DPR}, uSel:{value:-1},
+      uFocus:{value:1}, uSun:{value:sunDir} },
+    vertexShader:SAT_VS, fragmentShader:SAT_FS, vertexColors:true,
     transparent:true, depthWrite:false, blending:THREE.AdditiveBlending
   });
-  satPoints = new THREE.Points(satGeom, satMat);
+  satPoints = new THREE.Points(new THREE.BufferGeometry(), satMat);
   satPoints.frustumCulled = false;
   scene.add(satPoints);
 
-  // marcador do selecionado + trilha de órbita
-  selMarker = new THREE.Mesh(new THREE.RingGeometry(0.02,0.032,28),
-    new THREE.MeshBasicMaterial({color:0xffffff, side:THREE.DoubleSide, transparent:true, opacity:.9}));
-  selMarker.visible=false; scene.add(selMarker);
-  trailLine = new THREE.Line(new THREE.BufferGeometry(),
-    new THREE.LineBasicMaterial({color:0xffffff, transparent:true, opacity:.55}));
-  trailLine.visible=false; scene.add(trailLine);
+  initSelectionGfx();
 
   window.addEventListener('resize', onResize);
-  renderer.domElement.addEventListener('pointerdown', onPick3D);
-  renderLoop();
+  renderer.domElement.addEventListener('pointerdown', onPointerDown);
+  renderer.domElement.addEventListener('pointermove', onPointerMove);
+  renderer.domElement.addEventListener('pointerleave', ()=>{ hovered=null; tipEl.style.display='none'; });
+  requestAnimationFrame(renderLoop);
+}
+
+/* lat/lon (graus) -> direção na cena (ECEF: x, z, -y) */
+function llDir(lat, lon, v){
+  lat*=D2R; lon*=D2R;
+  return v.set(Math.cos(lat)*Math.cos(lon), Math.sin(lat), -Math.cos(lat)*Math.sin(lon));
 }
 
 function makeStars(){
-  const N=2600, pos=new Float32Array(N*3), col=new Float32Array(N*3);
+  const N=3200, pos=new Float32Array(N*3), col=new Float32Array(N*3), sz=new Float32Array(N);
   for(let i=0;i<N;i++){
-    const r=60+Math.random()*40, th=Math.random()*Math.PI*2, ph=Math.acos(2*Math.random()-1);
+    const r=120, th=Math.random()*Math.PI*2, ph=Math.acos(2*Math.random()-1);
     pos[i*3]=r*Math.sin(ph)*Math.cos(th); pos[i*3+1]=r*Math.cos(ph); pos[i*3+2]=r*Math.sin(ph)*Math.sin(th);
-    const b=.5+Math.random()*.5; col[i*3]=b*(.85+Math.random()*.15); col[i*3+1]=b*.9; col[i*3+2]=b;
+    const b=.35+Math.pow(Math.random(),3)*.65, w=Math.random();
+    col[i*3]=b*(w>.8?1:.86); col[i*3+1]=b*.92; col[i*3+2]=b*(w<.2?.8:1);
+    sz[i]=(Math.random()<.04? 2.4 : 1.0+Math.random()*.8)*DPR;
   }
   const g=new THREE.BufferGeometry();
   g.setAttribute('position',new THREE.BufferAttribute(pos,3));
   g.setAttribute('color',new THREE.BufferAttribute(col,3));
-  return new THREE.Points(g,new THREE.PointsMaterial({size:.18,vertexColors:true,sizeAttenuation:true,transparent:true,opacity:.9}));
+  g.setAttribute('sz',new THREE.BufferAttribute(sz,1));
+  const m=new THREE.ShaderMaterial({
+    vertexShader:`attribute float sz; varying vec3 vC; void main(){ vC=color; gl_PointSize=sz;
+      gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+    fragmentShader:`varying vec3 vC; void main(){ vec2 q=gl_PointCoord-0.5; float a=1.0-smoothstep(0.15,0.5,length(q));
+      gl_FragColor=vec4(vC*a,1.0); }`,
+    vertexColors:true, transparent:true, depthWrite:false, blending:THREE.AdditiveBlending
+  });
+  const pts=new THREE.Points(g,m); pts.frustumCulled=false;
+  return pts;
 }
 
 function onResize(){
   const h=document.getElementById('view3d');
+  if(!h.clientWidth || !h.clientHeight) return;
   camera.aspect=h.clientWidth/h.clientHeight; camera.updateProjectionMatrix();
   renderer.setSize(h.clientWidth,h.clientHeight);
+  renderer.getDrawingBufferSize(resVec);
   if(map) map.invalidateSize();
 }
 
-function renderLoop(){
-  requestAnimationFrame(renderLoop);
-  controls.update();
-  // marcador do selecionado acompanha a câmera (billboard)
-  if(selected && selMarker.visible){ selMarker.lookAt(camera.position); }
-  renderer.render(scene,camera);
-  projectLabels();
-}
-
 /* ECEF (km) -> coordenadas da cena */
-function ecefToScene(x,y,z,v){ v.set(x*SCALE, z*SCALE, -y*SCALE); return v; }
+function ecefToScene(x,y,z,v){ return v.set(x*SCALE, z*SCALE, -y*SCALE); }
 
 /* direção do Sol em ECEF -> cena (terminador real) */
 function updateSun(date){
@@ -718,14 +977,262 @@ function updateSun(date){
   const eps = (23.439 - 0.0000004*n)*D2R;
   const ra  = Math.atan2(Math.cos(eps)*Math.sin(lam), Math.cos(lam));
   const dec = Math.asin(Math.sin(eps)*Math.sin(lam));
-  const gmst = satellite.gstime(date);
-  const lon = ra - gmst;
+  const lon = ra - gmstNow;
   ecefToScene(Math.cos(dec)*Math.cos(lon), Math.cos(dec)*Math.sin(lon), Math.sin(dec), sunDir);
   sunDir.normalize();
+  sunLight.position.copy(sunDir).multiplyScalar(20);
+}
+
+/* ---------- buffers da GPU ---------- */
+function uploadSats(){
+  const n=visible.length, m=Math.max(n,1);
+  const A=new Float32Array(m*3), B=new Float32Array(m*4), C=new Float32Array(m*4), col=new Float32Array(m*3);
+  const tmp=new THREE.Color();
+  for(let i=0;i<n;i++){
+    const s=visible[i], el=s.el;
+    A[i*3]=el[0]; A[i*3+1]=el[1]; A[i*3+2]=el[2];
+    B[i*4]=el[3]; B[i*4+1]=el[4]; B[i*4+2]=el[5]; B[i*4+3]=el[6];
+    C[i*4]=el[7]; C[i*4+1]=el[8]; C[i*4+2]=i; C[i*4+3]= s.ok ? (s.hi?2:1) : 0;
+    tmp.setHex(s.color); col[i*3]=tmp.r; col[i*3+1]=tmp.g; col[i*3+2]=tmp.b;
+  }
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.BufferAttribute(A,3));
+  g.setAttribute('aB',new THREE.BufferAttribute(B,4));
+  g.setAttribute('aC',new THREE.BufferAttribute(C,4));
+  g.setAttribute('color',new THREE.BufferAttribute(col,3));
+  g.setDrawRange(0,n);
+  if(satPoints.geometry) satPoints.geometry.dispose();
+  satPoints.geometry=g;
+  cpuStamp=-1;
+}
+function refreshFlags(){
+  const a=satPoints.geometry.attributes.aC; if(!a) return;
+  for(let i=0;i<visible.length;i++){ const s=visible[i]; a.array[i*4+3]= s.ok ? (s.hi?2:1) : 0; }
+  a.needsUpdate=true;
 }
 
 /* ============================================================
-   3) MAPA 2D (Leaflet) + overlay canvas
+   4) GRÁFICOS DO SELECIONADO: órbita animada, traço no solo,
+      cobertura, modelo 3D, retículo
+   ============================================================ */
+const ORBIT_N = 360;
+let orbitRib, trackRib, orbitGroup, footGroup, footCap, footEdge, nadirLine;
+let reticle, selGlow, hoverRing, ping, model = null;
+const orbitState = {t0:0, P:1, revealStart:0, lam:-1};
+const selPos = new THREE.Vector3(), selVel = new THREE.Vector3(1,0,0), lastSelPos = new THREE.Vector3();
+const _v = new THREE.Vector3(), _q = new THREE.Quaternion(), Y_AXIS = new THREE.Vector3(0,1,0);
+
+function makeRibbon(maxPts, width, mode, min){
+  const g=new THREE.BufferGeometry(), nV=maxPts*2;
+  g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(nV*3),3));
+  g.setAttribute('aPrev',new THREE.BufferAttribute(new Float32Array(nV*3),3));
+  g.setAttribute('aNext',new THREE.BufferAttribute(new Float32Array(nV*3),3));
+  const side=new Float32Array(nV); for(let i=0;i<maxPts;i++){ side[2*i]=-1; side[2*i+1]=1; }
+  g.setAttribute('aSide',new THREE.BufferAttribute(side,1));
+  g.setAttribute('aU',new THREE.BufferAttribute(new Float32Array(nV),1));
+  const idx=[]; for(let i=0;i<maxPts-1;i++){ const a=2*i; idx.push(a,a+1,a+2, a+1,a+3,a+2); }
+  g.setIndex(idx);
+  const m=new THREE.ShaderMaterial({
+    uniforms:{ uPx:PX_UNIFORM, uWidth:{value:width*DPR}, uColor:{value:new THREE.Color(0xffffff)},
+      uHead:{value:0}, uReveal:{value:1}, uMin:{value:min}, uMode:{value:mode}, uTime:{value:0}, uAlpha:{value:1} },
+    vertexShader:RIB_VS, fragmentShader:RIB_FS, side:THREE.DoubleSide,
+    transparent:true, depthWrite:false, blending:THREE.AdditiveBlending
+  });
+  const mesh=new THREE.Mesh(g,m); mesh.frustumCulled=false; mesh.visible=false;
+  return mesh;
+}
+function setRibbon(mesh, pts, us, closed){
+  const n=pts.length, g=mesh.geometry;
+  const P=g.attributes.position.array, A=g.attributes.aPrev.array, N=g.attributes.aNext.array, U=g.attributes.aU.array;
+  for(let i=0;i<n;i++){
+    const p=pts[i];
+    const pr = i>0 ? pts[i-1] : (closed ? pts[n-2] : p);
+    const nx = i<n-1 ? pts[i+1] : (closed ? pts[1] : p);
+    for(let k=0;k<2;k++){
+      const j=(2*i+k)*3;
+      P[j]=p.x; P[j+1]=p.y; P[j+2]=p.z;
+      A[j]=pr.x; A[j+1]=pr.y; A[j+2]=pr.z;
+      N[j]=nx.x; N[j+1]=nx.y; N[j+2]=nx.z;
+      U[2*i+k]=us[i];
+    }
+  }
+  for(const k of ['position','aPrev','aNext','aU']) g.attributes[k].needsUpdate=true;
+  g.setDrawRange(0, Math.max(0,(n-1)*6));
+}
+
+function spriteTex(draw, size=128){
+  const c=document.createElement('canvas'); c.width=c.height=size;
+  draw(c.getContext('2d'), size);
+  const t=new THREE.CanvasTexture(c); t.minFilter=THREE.LinearFilter; return t;
+}
+function initSelectionGfx(){
+  orbitGroup = new THREE.Group(); scene.add(orbitGroup);
+  orbitRib = makeRibbon(ORBIT_N+1, 8, 0, 0.26); orbitGroup.add(orbitRib);
+  trackRib = makeRibbon(ORBIT_N+1, 4.5, 1, 0); scene.add(trackRib);
+
+  footGroup = new THREE.Group(); footGroup.visible=false; scene.add(footGroup);
+  footCap = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.ShaderMaterial({
+    uniforms:{ uColor:{value:new THREE.Color()}, uTime:{value:0} },
+    vertexShader:`varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+    fragmentShader:`uniform vec3 uColor; uniform float uTime; varying vec2 vUv;
+      void main(){ float r=1.0-vUv.y; float a=0.022+0.15*pow(r,7.0);
+        float p=fract(uTime*0.35); a+=0.11*exp(-pow((r-p)*22.0,2.0))*(1.0-p);
+        gl_FragColor=vec4(uColor*a,1.0); }`,
+    transparent:true, depthWrite:false, blending:THREE.AdditiveBlending
+  }));
+  footGroup.add(footCap);
+  footEdge = makeRibbon(181, 4, 2, 0); footEdge.visible=true; footGroup.add(footEdge);
+
+  nadirLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(),new THREE.Vector3()]),
+    new THREE.LineBasicMaterial({color:0xffffff, transparent:true, opacity:.35, depthWrite:false}));
+  nadirLine.visible=false; nadirLine.frustumCulled=false; scene.add(nadirLine);
+
+  const retTex = spriteTex((g,S)=>{
+    g.strokeStyle='#fff'; g.lineWidth=6; g.lineCap='round';
+    for(let k=0;k<4;k++){ g.beginPath(); g.arc(S/2,S/2,S*.36, k*Math.PI/2+.32, k*Math.PI/2+Math.PI/2-.32); g.stroke(); }
+    g.lineWidth=5;
+    [[S/2,4,S/2,S*.15],[S/2,S*.85,S/2,S-4],[4,S/2,S*.15,S/2],[S*.85,S/2,S-4,S/2]].forEach(([a,b,c,d])=>{
+      g.beginPath(); g.moveTo(a,b); g.lineTo(c,d); g.stroke(); });
+  });
+  reticle = new THREE.Sprite(new THREE.SpriteMaterial({map:retTex, sizeAttenuation:false, transparent:true, depthWrite:false, depthTest:false}));
+  reticle.visible=false; reticle.renderOrder=10; scene.add(reticle);
+
+  const glowTex = spriteTex((g,S)=>{
+    const gr=g.createRadialGradient(S/2,S/2,0,S/2,S/2,S/2);
+    gr.addColorStop(0,'rgba(255,255,255,1)'); gr.addColorStop(.18,'rgba(255,255,255,.9)');
+    gr.addColorStop(.4,'rgba(255,255,255,.25)'); gr.addColorStop(1,'rgba(255,255,255,0)');
+    g.fillStyle=gr; g.fillRect(0,0,S,S);
+  });
+  selGlow = new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex, sizeAttenuation:false, transparent:true,
+    depthWrite:false, blending:THREE.AdditiveBlending}));
+  selGlow.visible=false; scene.add(selGlow);
+
+  const ringTex = spriteTex((g,S)=>{ g.strokeStyle='#fff'; g.lineWidth=5; g.beginPath(); g.arc(S/2,S/2,S*.4,0,TWO_PI); g.stroke(); });
+  hoverRing = new THREE.Sprite(new THREE.SpriteMaterial({map:ringTex, sizeAttenuation:false, transparent:true,
+    opacity:.75, depthWrite:false, depthTest:false}));
+  hoverRing.visible=false; hoverRing.renderOrder=9; scene.add(hoverRing);
+
+  ping = new THREE.Sprite(new THREE.SpriteMaterial({map:ringTex, sizeAttenuation:false, transparent:true,
+    depthWrite:false, depthTest:false, blending:THREE.AdditiveBlending}));
+  ping.visible=false; ping.renderOrder=11; scene.add(ping);
+}
+
+/* órbita em referencial inercial (anel fechado) + traço no solo, a partir de t0 */
+function buildOrbit(sat, keepReveal){
+  const P = sat.period*60000, t0 = simTime.getTime();
+  const pts=[], us=[], tpts=[], tus=[];
+  let last=null;
+  const t0Track = t0 - 0.12*P;
+  for(let i=0;i<=ORBIT_N;i++){
+    _d.setTime(t0 + i*P/ORBIT_N);
+    const pv = satellite.propagate(sat.satrec, _d);
+    if(pv.position){ last = new THREE.Vector3(pv.position.x*SCALE, pv.position.z*SCALE, -pv.position.y*SCALE); }
+    if(last){ pts.push(last); us.push(i/ORBIT_N); }
+    const tt = t0Track + i*(1.12*P)/ORBIT_N; _d.setTime(tt);
+    const pt = satellite.propagate(sat.satrec, _d);
+    if(pt.position){
+      const e = satellite.eciToEcf(pt.position, satellite.gstime(_d));
+      const v = ecefToScene(e.x,e.y,e.z,new THREE.Vector3()).normalize().multiplyScalar(1.0025);
+      tpts.push(v); tus.push((tt-t0)/P);
+    }
+  }
+  if(pts.length>2){ setRibbon(orbitRib, pts, us, true); }
+  if(tpts.length>2){ setRibbon(trackRib, tpts, tus, false); }
+  const c = new THREE.Color(sat.color);
+  orbitRib.material.uniforms.uColor.value.copy(c);
+  trackRib.material.uniforms.uColor.value.copy(c).lerp(new THREE.Color(0xffffff), .25);
+  orbitState.t0=t0; orbitState.P=P;
+  if(!keepReveal) orbitState.revealStart=performance.now();
+}
+
+function buildFootprint(lam){
+  footCap.geometry.dispose();
+  footCap.geometry = new THREE.SphereGeometry(1.003, 96, 24, 0, TWO_PI, 0, lam);
+  const pts=[], us=[];
+  for(let i=0;i<=180;i++){
+    const a=i/180*TWO_PI;
+    pts.push(new THREE.Vector3(Math.sin(lam)*Math.cos(a), Math.cos(lam), Math.sin(lam)*Math.sin(a)).multiplyScalar(1.0035));
+    us.push(i/180);
+  }
+  setRibbon(footEdge, pts, us, true);
+  orbitState.lam = lam;
+}
+
+/* ---------- modelos 3D procedurais ---------- */
+let PANEL_TEX = null;
+function panelTex(){
+  if(PANEL_TEX) return PANEL_TEX;
+  PANEL_TEX = spriteTex((g)=>{
+    const grd=g.createLinearGradient(0,0,256,256); grd.addColorStop(0,'#24418f'); grd.addColorStop(1,'#0d1c4a');
+    g.fillStyle=grd; g.fillRect(0,0,256,256);
+    g.strokeStyle='rgba(160,190,255,.38)'; g.lineWidth=2;
+    for(let x=0;x<=256;x+=16){ g.beginPath(); g.moveTo(x,0); g.lineTo(x,256); g.stroke(); }
+    for(let y=0;y<=256;y+=32){ g.beginPath(); g.moveTo(0,y); g.lineTo(256,y); g.stroke(); }
+    g.strokeStyle='rgba(215,225,240,.85)'; g.lineWidth=6; g.strokeRect(3,3,250,250);
+  },256);
+  PANEL_TEX.wrapS=PANEL_TEX.wrapT=THREE.RepeatWrapping;
+  return PANEL_TEX;
+}
+function buildModel(sat){
+  const M = {
+    body:new THREE.MeshStandardMaterial({color:0xaab3bf, metalness:.75, roughness:.32}),
+    dark:new THREE.MeshStandardMaterial({color:0x30353f, metalness:.55, roughness:.45}),
+    gold:new THREE.MeshStandardMaterial({color:0xd8a443, metalness:.9, roughness:.25, emissive:0x241400}),
+    white:new THREE.MeshStandardMaterial({color:0xeef2f6, metalness:.15, roughness:.55, side:THREE.DoubleSide}),
+    panel:new THREE.MeshStandardMaterial({map:panelTex(), metalness:.3, roughness:.4, emissive:0x060c22, side:THREE.DoubleSide}),
+    panelGold:new THREE.MeshStandardMaterial({map:panelTex(), color:0xffc27a, metalness:.35, roughness:.4, emissive:0x140800, side:THREE.DoubleSide}),
+  };
+  const box=(w,h,d,m)=>new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);
+  const cyl=(r,h,m)=>new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,20),m);
+  const dish=(r,m)=>{ const d=new THREE.Mesh(new THREE.SphereGeometry(r,24,10,0,TWO_PI,0,.75),m); d.rotation.x=-Math.PI/2; return d; };
+  /* asa: painel ao longo de +X (ou -X), normal +Z; gira no eixo X para seguir o Sol */
+  const wingX=(len,wid,sign,m)=>{ const g=new THREE.Group(); const p=box(len,wid,.02,m); p.position.x=sign*(len/2+.14); g.add(p);
+    const b=box(.16,.035,.035,M.body); b.position.x=sign*.07; g.add(b); g.userData.axis='x'; return g; };
+  const wingY=(len,wid,sign,m)=>{ const g=new THREE.Group(); const p=box(wid,len,.02,m); p.position.y=sign*(len/2+.08); g.add(p);
+    g.userData.axis='y'; return g; };
+
+  const g = new THREE.Group(); const wings=[];
+  const nm = sat.name.toUpperCase();
+  const kind = (/ZARYA|TIANHE|ISS|CSS/.test(nm) || sat.cat==='docked') ? 'station'
+    : (sat.cat==='starlink') ? 'starlink'
+    : (sat.cat==='cubesat') ? 'cubesat'
+    : (sat.cls==='GEO') ? 'geo'
+    : 'bus';
+  if(kind==='starlink'){
+    g.add(box(1.0,.66,.10,M.dark));
+    const top=box(.98,.64,.02,M.body); top.position.z=-.06; g.add(top);
+    for(const [x,y] of [[-.25,-.16],[.25,-.16],[-.25,.16],[.25,.16]]){ const a=box(.42,.26,.03,M.white); a.position.set(x,y,.065); g.add(a); }
+    const w=wingX(2.9,.62,1,M.panel); w.position.x=.5; g.add(w); wings.push(w);
+  }else if(kind==='station'){
+    g.add(box(4.2,.12,.12,M.body));
+    const core=cyl(.17,1.9,M.white); g.add(core);
+    const n2=cyl(.13,.9,M.white); n2.rotation.z=Math.PI/2; n2.position.y=.55; g.add(n2);
+    for(const x of [-1.9,-1.45,1.45,1.9]) for(const s of [1,-1]){
+      const w=wingY(1.5,.36,s,M.panelGold); w.position.x=x; g.add(w); wings.push(w);
+    }
+    for(const x of [-.75,.75]){ const r=box(.5,.04,.7,M.white); r.position.set(x,0,.42); g.add(r); }
+  }else if(kind==='cubesat'){
+    g.add(box(.34,.34,.66,M.body));
+    for(const s of [1,-1]){ const w=wingX(.62,.32,s,M.panel); w.position.x=s*.17; g.add(w); wings.push(w); }
+    const ant=cyl(.008,.5,M.white); ant.rotation.x=Math.PI/2; ant.position.set(.12,.12,.4); g.add(ant);
+  }else{
+    const geo = kind==='geo';
+    g.add(box(.72,.72,.86,M.gold));
+    const L = geo?2.5:1.7;
+    for(const s of [1,-1]){ const w=wingX(L,.66,s,M.panel); w.position.x=s*.36; g.add(w); wings.push(w); }
+    const d1=dish(geo?.42:.26,M.white); d1.position.set(0,geo?.48:0,.5); g.add(d1);
+    if(geo){ const d2=dish(.42,M.white); d2.position.set(0,-.48,.5); g.add(d2); }
+    else { for(let i=0;i<6;i++){ const h=cyl(.03,.22,M.white); h.rotation.x=Math.PI/2; h.position.set(Math.cos(i)*.2,Math.sin(i)*.2,.54); g.add(h); } }
+  }
+  g.userData.wings = wings;
+  return g;
+}
+function disposeModel(m){
+  m.traverse(o=>{ if(o.geometry) o.geometry.dispose(); if(o.material){ o.material.dispose(); } });
+}
+
+/* ============================================================
+   5) MAPA 2D (Leaflet) + overlay canvas
    ============================================================ */
 let map, mapCanvas, mapCtx, trackLine, view='3d';
 
@@ -734,7 +1241,6 @@ function initMap(){
     minZoom:1, maxZoom:8, center:[15,0], zoom:2});
   L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
     {subdomains:'abcd', maxZoom:8}).addTo(map);
-  // canvas overlay para milhares de pontos
   const pane = map.getPanes().overlayPane;
   mapCanvas = L.DomUtil.create('canvas','sat-canvas',pane);
   mapCanvas.style.position='absolute'; mapCanvas.style.pointerEvents='none';
@@ -745,65 +1251,138 @@ function initMap(){
 }
 function sizeMapCanvas(){
   if(!map) return;
-  const s=map.getSize(); const dpr=Math.min(devicePixelRatio,2);
-  mapCanvas.width=s.x*dpr; mapCanvas.height=s.y*dpr;
+  const s=map.getSize();
+  mapCanvas.width=s.x*DPR; mapCanvas.height=s.y*DPR;
   mapCanvas.style.width=s.x+'px'; mapCanvas.style.height=s.y+'px';
-  const tl = map.containerPointToLayerPoint([0,0]);
-  L.DomUtil.setPosition(mapCanvas, tl);
-  mapCtx.setTransform(dpr,0,0,dpr,0,0);
+  L.DomUtil.setPosition(mapCanvas, map.containerPointToLayerPoint([0,0]));
+  mapCtx.setTransform(DPR,0,0,DPR,0,0);
 }
 function drawMap(){
   if(view!=='2d'||!mapCtx) return;
+  computeCPU();
   const s=map.getSize();
   mapCtx.clearRect(0,0,s.x,s.y);
+  let lastC='';
+  mapCtx.globalAlpha=.85;
   for(const sat of visible){
+    if(!sat.ok || sat===selected) continue;
     const p = map.latLngToContainerPoint([sat.lat,sat.lon]);
     if(p.x<-5||p.x>s.x+5||p.y<-5||p.y>s.y+5) continue;
     const c = '#'+sat.color.toString(16).padStart(6,'0');
-    mapCtx.beginPath(); mapCtx.arc(p.x,p.y, sat===selected?5:2.4, 0, 7);
-    mapCtx.fillStyle=c; mapCtx.globalAlpha = sat===selected?1:.85; mapCtx.fill();
-    if(sat===selected){
-      mapCtx.globalAlpha=1; mapCtx.strokeStyle='#fff'; mapCtx.lineWidth=1.5;
-      mapCtx.beginPath(); mapCtx.arc(p.x,p.y,8,0,7); mapCtx.stroke();
-    }
+    if(c!==lastC){ mapCtx.fillStyle=c; lastC=c; }
+    mapCtx.fillRect(p.x-1.2,p.y-1.2,2.4,2.4);
   }
   mapCtx.globalAlpha=1;
+  if(selected){
+    const p = map.latLngToContainerPoint([selected.lat,selected.lon]);
+    mapCtx.fillStyle='#'+selected.color.toString(16).padStart(6,'0');
+    mapCtx.beginPath(); mapCtx.arc(p.x,p.y,5,0,7); mapCtx.fill();
+    mapCtx.strokeStyle='#fff'; mapCtx.lineWidth=1.5;
+    mapCtx.beginPath(); mapCtx.arc(p.x,p.y,9,0,7); mapCtx.stroke();
+  }
 }
 
 /* ============================================================
-   4) seleção / picking
+   6) seleção / picking / hover
    ============================================================ */
-const ray = new THREE.Raycaster();
-ray.params.Points = {threshold:0.045};
-const mouse = new THREE.Vector2();
-let downXY=null;
-function onPick3D(ev){
-  downXY={x:ev.clientX,y:ev.clientY,t:performance.now()};
-  renderer.domElement.addEventListener('pointerup', up3d, {once:true});
+const tipEl = document.getElementById('tip');
+let downXY = null, hoverQueued = false, lastMove = null;
+
+function screenOf(p, out){
+  _v.copy(p).project(camera);
+  const r=renderer.domElement.getBoundingClientRect();
+  out.x=(_v.x*.5+.5)*r.width; out.y=(-_v.y*.5+.5)*r.height; out.z=_v.z;
+  return out;
 }
-function up3d(ev){
+/* ponto escondido atrás da Terra? (raio câmera -> ponto cruza a esfera unitária) */
+function occluded(p){
+  const C=camera.position;
+  const dx=p.x-C.x, dy=p.y-C.y, dz=p.z-C.z;
+  const a=dx*dx+dy*dy+dz*dz, b=2*(C.x*dx+C.y*dy+C.z*dz), c=C.x*C.x+C.y*C.y+C.z*C.z-1;
+  const disc=b*b-4*a*c; if(disc<=0) return false;
+  const t=(-b-Math.sqrt(disc))/(2*a);
+  return t>0 && t<1;
+}
+function nearestAt(cx, cy, radius){
+  computeCPU();
+  const r=renderer.domElement.getBoundingClientRect();
+  const x=cx-r.left, y=cy-r.top, out={x:0,y:0,z:0};
+  let best=null, bd=radius*radius, bz=9;
+  for(const s of visible){
+    if(!s.ok) continue;
+    screenOf(s.p, out);
+    if(out.z>1) continue;
+    const d=(out.x-x)*(out.x-x)+(out.y-y)*(out.y-y);
+    if(d<bd || (d===bd && out.z<bz)){
+      if(occluded(s.p)) continue;
+      bd=d; best=s; bz=out.z;
+    }
+  }
+  return best;
+}
+function onPointerDown(ev){
+  downXY={x:ev.clientX,y:ev.clientY,t:performance.now()};
+  cancelTween('intro');
+  renderer.domElement.addEventListener('pointerup', onPointerUp, {once:true});
+}
+function onPointerUp(ev){
   if(!downXY) return;
-  const moved = Math.hypot(ev.clientX-downXY.x, ev.clientY-downXY.y);
-  if(moved>6 || performance.now()-downXY.t>400) return;     // foi arrasto, ignora
-  const r = renderer.domElement.getBoundingClientRect();
-  mouse.x=((ev.clientX-r.left)/r.width)*2-1;
-  mouse.y=-((ev.clientY-r.top)/r.height)*2+1;
-  ray.setFromCamera(mouse, camera);
-  const hits = ray.intersectObject(satPoints, false);
-  if(hits.length){ select(visible[hits[0].index]); }
+  const moved=Math.hypot(ev.clientX-downXY.x, ev.clientY-downXY.y);
+  if(moved>6 || performance.now()-downXY.t>450) return;     // foi arrasto
+  const s = nearestAt(ev.clientX, ev.clientY, ev.pointerType==='touch'?22:12);
+  if(s) select(s);
+}
+function onPointerMove(ev){
+  if(ev.pointerType==='touch' || ev.buttons) { tipEl.style.display='none'; hovered=null; return; }
+  lastMove={x:ev.clientX,y:ev.clientY};
+  if(!hoverQueued){ hoverQueued=true; requestAnimationFrame(doHover); }
+}
+function doHover(){
+  hoverQueued=false;
+  if(!lastMove || view!=='3d') return;
+  const s = nearestAt(lastMove.x, lastMove.y, 11);
+  hovered = (s && s!==selected) ? s : null;
+  renderer.domElement.style.cursor = s ? 'pointer' : 'grab';
+  if(hovered){
+    const r=renderer.domElement.getBoundingClientRect();
+    tipEl.innerHTML=`<i style="background:${CLASS_COLORS[s.cls].css}"></i>${esc(s.name)}<small>${s.cls} · ${Math.round(s.alt)} km</small>`;
+    tipEl.style.left=(lastMove.x-r.left)+'px'; tipEl.style.top=(lastMove.y-r.top)+'px';
+    tipEl.style.display='block';
+  } else tipEl.style.display='none';
 }
 function onPick2D(ev){
+  computeCPU();
   let best=null,bd=18;
   for(const sat of visible){
+    if(!sat.ok) continue;
     const p=map.latLngToContainerPoint([sat.lat,sat.lon]);
     const d=Math.hypot(p.x-ev.containerPoint.x,p.y-ev.containerPoint.y);
     if(d<bd){bd=d;best=sat;}
   }
   if(best) select(best);
 }
+function esc(t){ return String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+/* satélites no mesmo plano orbital (mesma inclinação, RAAN e altitude) */
+function markPlane(sel){
+  for(const s of sats) s.hi=false;
+  if(!sel || !CONSTELLATIONS.has(sel.cat) || !sel.ok) return 0;
+  const e=sel.el; let n=0;
+  for(const s of sats){
+    if(s===sel || s.cat!==sel.cat || !s.ok) continue;
+    if(Math.abs(s.el[2]-e[2]) > .4*D2R) continue;
+    let dO=Math.abs(s.el[3]-e[3])%TWO_PI; if(dO>Math.PI) dO=TWO_PI-dO;
+    if(dO > 2*D2R) continue;
+    if(Math.abs(s.el[0]-e[0])*RE > 35) continue;
+    s.hi=true; n++;
+  }
+  return n;
+}
 
 function select(sat){
-  selected = sat;
+  if(!sat) return;
+  const prev = selected;
+  selected = sat; hovered = null; tipEl.style.display='none';
   const c = CLASS_COLORS[sat.cls];
   document.getElementById('info').classList.add('show');
   document.getElementById('iName').textContent = sat.name;
@@ -814,40 +1393,204 @@ function select(sat){
   cl.style.background = 'color-mix(in srgb,'+c.css+' 16%, transparent)';
   cl.style.color = c.css;
   document.getElementById('iInc').textContent = sat.inc.toFixed(2)+'°';
-  document.getElementById('iPer').textContent = sat.period.toFixed(1)+' min';
+  document.getElementById('iPer').textContent = sat.period>=120 ? (sat.period/60).toFixed(2)+' h' : sat.period.toFixed(1)+' min';
   document.getElementById('iPA').innerHTML = Math.round(sat.peri)+' <small>km</small> / '+Math.round(sat.apo)+' <small>km</small>';
-  selMarker.material.color.set(c.hex);
-  selMarker.visible = (view==='3d');
-  buildTrail(sat);
+
+  const n = markPlane(sat);
+  const pc=document.getElementById('iPlaneCell');
+  pc.style.display = CONSTELLATIONS.has(sat.cat) ? '' : 'none';
+  document.getElementById('iPlane').innerHTML = n+' <small>outros satélites (destacados)</small>';
+  refreshFlags();
+  satMat.uniforms.uSel.value = sat.vi;
+  satMat.uniforms.uFocus.value = .45;
+
+  const col=new THREE.Color(sat.color);
+  reticle.material.color.copy(col).lerp(new THREE.Color(0xffffff), .35);
+  selGlow.material.color.copy(col).lerp(new THREE.Color(0xffffff), .5);
+  footCap.material.uniforms.uColor.value.copy(col);
+  footEdge.material.uniforms.uColor.value.copy(col);
+  orbitState.lam = -1;
+
+  if(model){ scene.remove(model); disposeModel(model); }
+  model = buildModel(sat); model.visible=false; scene.add(model);
+
+  buildOrbit(sat, false);
+  updateSelected(performance.now(), true);
+  lastSelPos.copy(selPos);
+  setSelVisibility();
   if(view==='2d') buildTrack(sat);
+  if(follow && prev!==sat) flyToSelected();
 }
 function classDesc(c){return {LEO:'baixa',POLAR:'heliossíncrona',MEO:'média',GEO:'geoestacionária',HEO:'elíptica alta'}[c]||'';}
 
 function closeInfo(){
+  if(follow) setFollow(false);
   selected=null;
   document.getElementById('info').classList.remove('show');
-  selMarker.visible=false; trailLine.visible=false;
+  markPlane(null); refreshFlags();
+  satMat.uniforms.uSel.value=-1; satMat.uniforms.uFocus.value=1;
+  if(model){ scene.remove(model); disposeModel(model); model=null; }
+  setSelVisibility();
   if(trackLine){ map.removeLayer(trackLine); trackLine=null; }
 }
-
-/* trilha 3D — uma órbita inteira em ECEF */
-function buildTrail(sat){
-  const steps=160, pts=[];
-  const dt = sat.period*60*1000/steps;
-  for(let i=0;i<=steps;i++){
-    const d=new Date(simTime.getTime()+i*dt);
-    const pv=satellite.propagate(sat.satrec,d);
-    if(!pv.position) continue;
-    const g=satellite.gstime(d);
-    const e=satellite.eciToEcf(pv.position,g);
-    const v=new THREE.Vector3(); ecefToScene(e.x,e.y,e.z,v); pts.push(v);
-  }
-  trailLine.geometry.dispose();
-  trailLine.geometry=new THREE.BufferGeometry().setFromPoints(pts);
-  trailLine.material.color.set(CLASS_COLORS[sat.cls].hex);
-  trailLine.visible=(view==='3d');
+function setSelVisibility(){
+  const on = !!selected && view==='3d';
+  orbitRib.visible = trackRib.visible = on;
+  reticle.visible = selGlow.visible = nadirLine.visible = on;
+  footGroup.visible = on && showFoot;
+  if(model) model.visible = on;
+  if(!on) ping.visible = false;
 }
-/* ground track 2D */
+
+/* atualização por quadro do selecionado (SGP4 exato) */
+function updateSelected(now, force){
+  const s=selected;
+  let pv; try{ pv=satellite.propagate(s.satrec, simTime); }catch(e){ pv=null; }
+  if(!pv || !pv.position) return;
+  const e=satellite.eciToEcf(pv.position, gmstNow);
+  ecefToScene(e.x,e.y,e.z,selPos);
+  const ve=satellite.eciToEcf(pv.velocity, gmstNow);
+  selVel.set(ve.x, ve.z, -ve.y).normalize();
+  const gd=satellite.eciToGeodetic(pv.position, gmstNow);
+  s.lat=gd.latitude*R2D; s.lon=gd.longitude*R2D; s.alt=gd.height;
+  s.vel=Math.hypot(pv.velocity.x,pv.velocity.y,pv.velocity.z);
+  const d=selPos.dot(sunDir);
+  s.lit = d>0 || selPos.clone().addScaledVector(sunDir,-d).length()>1.0;
+
+  // órbita: anel inercial gira com -GMST; cabeça e revelação animadas
+  const tms=simTime.getTime();
+  let head=(tms-orbitState.t0)/orbitState.P;
+  if(head>0.2 || head<0){ buildOrbit(s, true); head=(tms-orbitState.t0)/orbitState.P; }
+  orbitGroup.rotation.y = -gmstNow;
+  const k = Math.min(1,(now-orbitState.revealStart)/1600), reveal = 1-Math.pow(1-k,2.4);
+  const tsec = now/1000;
+  for(const rb of [orbitRib, trackRib]){
+    const u=rb.material.uniforms; u.uHead.value=head; u.uReveal.value=reveal; u.uTime.value=tsec;
+  }
+
+  // cobertura: calota esférica até a elevação mínima
+  const r=selPos.length(), alt=(r-1)*RE;
+  const lam = Math.acos(Math.min(1, RE/(RE+Math.max(alt,1))*Math.cos(ELEV_MASK*D2R))) - ELEV_MASK*D2R;
+  if(Math.abs(lam-orbitState.lam)>0.003) buildFootprint(Math.max(lam,0.002));
+  _v.copy(selPos).normalize();
+  footGroup.quaternion.setFromUnitVectors(Y_AXIS, _v);
+  footCap.material.uniforms.uTime.value = tsec;
+  footEdge.material.uniforms.uTime.value = tsec;
+  s.footKm = lam*RE;
+
+  // linha nadir
+  const np=nadirLine.geometry.attributes.position.array;
+  np[0]=selPos.x; np[1]=selPos.y; np[2]=selPos.z;
+  np[3]=_v.x; np[4]=_v.y; np[5]=_v.z;
+  nadirLine.geometry.attributes.position.needsUpdate=true;
+
+  // câmera seguindo
+  if(follow && !tweens.fly){
+    camera.position.add(_v.copy(selPos).sub(lastSelPos));
+    controls.target.copy(selPos);
+  }
+  lastSelPos.copy(selPos);
+
+  // onda de "ping" logo após o clique
+  const pk = (now-orbitState.revealStart)/900;
+  ping.visible = view==='3d' && pk<1;
+  if(ping.visible){
+    ping.position.copy(selPos);
+    ping.scale.setScalar(2*Math.tan(camera.fov*D2R/2)/(renderer.domElement.clientHeight||600)*(14+90*pk));
+    ping.material.opacity = 1-pk;
+    ping.material.color.setHex(s.color);
+  }
+
+  // retículo, brilho e modelo 3D
+  const camD = camera.position.distanceTo(selPos);
+  const H = renderer.domElement.clientHeight || 600;
+  const px = 2*Math.tan(camera.fov*D2R/2)/H;          // 1 px em unidades de sprite
+  const near = camD < 0.6;
+  reticle.position.copy(selPos); selGlow.position.copy(selPos);
+  const pulse = 1+0.08*Math.sin(tsec*3.2);
+  reticle.scale.setScalar(px*(near?46:34)*pulse);
+  reticle.material.rotation = tsec*0.6;
+  reticle.material.opacity = near ? Math.max(0,(camD-0.12)/0.48)*0.9 : 0.95;
+  selGlow.scale.setScalar(px*16);
+  selGlow.material.opacity = near ? Math.max(0,(camD-0.1)/0.5) : 1;
+  if(model && view==='3d'){
+    model.visible = camD < 2.5;
+    model.position.copy(selPos);
+    model.up.copy(selVel);
+    model.lookAt(0,0,0);                                 // +Z aponta para o nadir
+    model.scale.setScalar(Math.min(0.02, camD*0.05));
+    _q.copy(model.quaternion).invert();
+    _v.copy(sunDir).applyQuaternion(_q);
+    for(const w of model.userData.wings){
+      if(w.userData.axis==='x') w.rotation.x = Math.atan2(-_v.y, _v.z);
+      else w.rotation.y = Math.atan2(_v.x, _v.z);
+    }
+  }
+}
+
+/* ---------- tweens de câmera ---------- */
+const tweens = {};
+function cancelTween(k){ delete tweens[k]; }
+const ease = t => t<.5 ? 4*t*t*t : 1-Math.pow(-2*t+2,3)/2;
+function introTween(dir){
+  // distância final que enquadra a Terra + casca LEO também em telas retrato (celular)
+  const t0=performance.now()+250, from=38;
+  const to=Math.max(3.7, 1.15/(0.8*Math.tan(camera.fov*D2R/2)*Math.min(1,camera.aspect)));
+  tweens.intro = now=>{
+    const k=Math.max(0,Math.min(1,(now-t0)/3200));
+    const r = from*Math.pow(to/from, ease(k));
+    camera.position.copy(dir).multiplyScalar(r);
+    return k<1;
+  };
+}
+function flyToSelected(){
+  cancelTween('intro');
+  const t0=performance.now(), dur=1700;
+  const p0=camera.position.clone(), g0=controls.target.clone();
+  tweens.fly = now=>{
+    if(!selected) return false;
+    const k=ease(Math.min(1,(now-t0)/dur));
+    const radial=selPos.clone().normalize();
+    const side=new THREE.Vector3().crossVectors(radial, selVel).normalize();
+    const off = Math.max(0.26, (selPos.length()-1)*0.3);
+    const end = selPos.clone().addScaledVector(radial, off*.55).addScaledVector(side, off*.75).addScaledVector(selVel, -off*.22);
+    // interpolação esférica em torno da Terra (a câmera nunca atravessa o globo)
+    const r0=p0.length(), r1=end.length();
+    const q=new THREE.Quaternion().setFromUnitVectors(p0.clone().normalize(), end.clone().normalize());
+    const qk=new THREE.Quaternion().slerp(q,k);
+    const dir=p0.clone().normalize().applyQuaternion(qk);
+    const lin=new THREE.Vector3().lerpVectors(p0,end,k);
+    camera.position.copy(dir.multiplyScalar(r0+(r1-r0)*k)).lerp(lin, k*k);
+    controls.target.lerpVectors(g0, selPos, k);
+    if(k>=1){ lastSelPos.copy(selPos); return false; }
+    return true;
+  };
+}
+function flyHome(){
+  const t0=performance.now(), dur=1400;
+  const p0=camera.position.clone(), g0=controls.target.clone();
+  const r1=Math.max(3.2, p0.length()*1.2);
+  tweens.fly = now=>{
+    const k=ease(Math.min(1,(now-t0)/dur));
+    const dir=p0.clone().normalize();
+    camera.position.copy(dir.multiplyScalar(p0.length()+(r1-p0.length())*k));
+    controls.target.lerpVectors(g0, new THREE.Vector3(), k);
+    return k<1;
+  };
+}
+function setFollow(on){
+  follow = on && !!selected;
+  document.getElementById('bFollow').classList.toggle('on', follow);
+  controls.minDistance = follow ? 0.006 : 1.15;
+  if(follow) flyToSelected(); else flyHome();
+}
+function setFoot(on){
+  showFoot=on;
+  document.getElementById('bFoot').classList.toggle('on', on);
+  setSelVisibility();
+}
+
+/* trilha 2D (ground track) */
 function buildTrack(sat){
   if(trackLine){ map.removeLayer(trackLine); trackLine=null; }
   const steps=180, segs=[[]];
@@ -858,7 +1601,7 @@ function buildTrack(sat){
     const pv=satellite.propagate(sat.satrec,d); if(!pv.position) continue;
     const g=satellite.gstime(d); const gd=satellite.eciToGeodetic(pv.position,g);
     const lat=gd.latitude*R2D, lon=gd.longitude*R2D;
-    if(prev!==null && Math.abs(lon-prev)>180) segs.push([]); // quebra na antimeridiana
+    if(prev!==null && Math.abs(lon-prev)>180) segs.push([]);
     segs[segs.length-1].push([lat,lon]); prev=lon;
   }
   trackLine=L.layerGroup(segs.filter(s=>s.length>1).map(s=>
@@ -866,102 +1609,118 @@ function buildTrack(sat){
 }
 
 /* ============================================================
-   5) loop de atualização de posições (throttle)
+   7) loop principal
    ============================================================ */
+let lastHud=0, last2d=0, fpsN=0, fpsT=performance.now();
 function rebuild(){
+  for(const s of sats) s.vi=-1;
   visible = sats.filter(s=>CATS[s.cat].on && classOn[s.cls]);
-  const n=Math.max(visible.length,1);
-  const pos=new Float32Array(n*3), col=new Float32Array(n*3);
-  satGeom.setAttribute('position',new THREE.BufferAttribute(pos,3));
-  satGeom.setAttribute('color',new THREE.BufferAttribute(col,3));
-  for(let i=0;i<visible.length;i++){
-    const c=new THREE.Color(visible[i].color);
-    col[i*3]=c.r; col[i*3+1]=c.g; col[i*3+2]=c.b;
+  visible.forEach((s,i)=>s.vi=i);
+  if(tRef===null) rebaseAll(simTime.getTime()); else uploadSats();
+  if(selected){
+    // após recarregar TLEs o objeto muda: troca pelo novo de mesmo NORAD, sem reanimar
+    if(!visible.includes(selected)){
+      const rep = visible.find(s=>s.satnum===selected.satnum);
+      if(rep){ selected = rep; buildOrbit(rep, true); } else closeInfo();
+    }
+    if(selected){ satMat.uniforms.uSel.value=selected.vi; markPlane(selected); refreshFlags(); }
   }
-  satGeom.attributes.color.needsUpdate=true;
-  satGeom.setDrawRange(0,visible.length);
+  if(hovered && !visible.includes(hovered)) hovered=null;
   updateCounts();
 }
 
-function updatePositions(){
-  if(!paused){
-    const now=performance.now();
-    simTime=new Date(simTime.getTime()+(now-lastReal)*speed); lastReal=now;
-  } else lastReal=performance.now();
-
-  const gmst=satellite.gstime(simTime);
+function renderLoop(now){
+  requestAnimationFrame(renderLoop);
+  if(!paused) simTime = new Date(simTime.getTime() + (now-lastReal)*speed);
+  lastReal = now;
+  const tms = simTime.getTime();
+  if(tRef===null || Math.abs(tms-tRef) > REBASE_MS) rebaseAll(tms);
+  gmstNow = satellite.gstime(simTime);
   updateSun(simTime);
-  satPoints.material.uniforms && (atmo.material.uniforms.sunDir.value=sunDir);
+  satMat.uniforms.uDt.value = (tms-tRef)/1000;
+  satMat.uniforms.uGmst.value = gmstNow;
 
-  const pos=satGeom.attributes.position.array;
-  for(let i=0;i<visible.length;i++){
-    const sat=visible[i];
-    const pv=satellite.propagate(sat.satrec,simTime);
-    if(!pv.position){ pos[i*3]=pos[i*3+1]=pos[i*3+2]=99999; continue; }
-    const e=satellite.eciToEcf(pv.position,gmst);
-    sat.ecef.set(e.x,e.y,e.z);
-    pos[i*3]=e.x*SCALE; pos[i*3+1]=e.z*SCALE; pos[i*3+2]=-e.y*SCALE;
-    // geodésico (para mapa/info)
-    const gd=satellite.eciToGeodetic(pv.position,gmst);
-    sat.lat=gd.latitude*R2D; sat.lon=gd.longitude*R2D; sat.alt=gd.height;
-    if(pv.velocity) sat.vel=Math.hypot(pv.velocity.x,pv.velocity.y,pv.velocity.z);
-  }
-  satGeom.attributes.position.needsUpdate=true;
+  for(const k in tweens){ if(!tweens[k](now)) delete tweens[k]; }
+  if(selected) updateSelected(now);
 
-  if(selected){
-    selMarker.position.set(selected.ecef.x*SCALE, selected.ecef.z*SCALE, -selected.ecef.y*SCALE);
-    document.getElementById('iAlt').innerHTML=Math.round(selected.alt)+' <small>km</small>';
-    document.getElementById('iVel').innerHTML=selected.vel.toFixed(2)+' <small>km/s</small>';
-    document.getElementById('iLat').textContent=selected.lat.toFixed(2)+'°';
-    document.getElementById('iLon').textContent=selected.lon.toFixed(2)+'°';
-  }
-  if(view==='2d') drawMap();
+  if(hovered && view==='3d'){
+    kepScene(hovered, (tms-tRef)/1000, gmstNow, hovered.p);
+    hoverRing.visible=true; hoverRing.position.copy(hovered.p);
+    hoverRing.scale.setScalar(2*Math.tan(camera.fov*D2R/2)/(renderer.domElement.clientHeight||600)*22);
+    hoverRing.material.color.setHex(hovered.color);
+  } else hoverRing.visible=false;
 
-  // relógios
+  // plano de corte próximo adaptativo (permite chegar bem perto do satélite)
+  const nearP = Math.min(0.05, Math.max(0.0003, camera.position.distanceTo(controls.target)*0.04));
+  if(Math.abs(nearP-camera.near)/camera.near > 0.15){ camera.near=nearP; camera.updateProjectionMatrix(); }
+
+  controls.update();
+  PX_UNIFORM.value = 2*Math.tan(camera.fov*D2R/2)/Math.max(1,resVec.y);
+  if(view==='3d'){ renderer.render(scene,camera); projectLabels(); }
+  if(view==='2d' && now-last2d>200){ last2d=now; drawMap(); }
+  if(now-lastHud>250){ lastHud=now; updateHud(); }
+
+  fpsN++;
+  if(now-fpsT>1000){ document.getElementById('fps').textContent=Math.round(fpsN*1000/(now-fpsT))+' fps'; fpsN=0; fpsT=now; }
+}
+
+function updateHud(){
   document.getElementById('utc').textContent=fmtUTC(new Date());
   document.getElementById('simTime').textContent=fmtFull(simTime);
+  if(selected){
+    const s=selected;
+    document.getElementById('iAlt').innerHTML=Math.round(s.alt).toLocaleString('pt-BR')+' <small>km</small>';
+    document.getElementById('iVel').innerHTML=s.vel.toFixed(2)+' <small>km/s</small>';
+    document.getElementById('iLat').textContent=s.lat.toFixed(2)+'°';
+    document.getElementById('iLon').textContent=s.lon.toFixed(2)+'°';
+    const li=document.getElementById('iLit');
+    li.innerHTML = s.lit ? '<span class="lit-sun">☀ iluminado</span>' : '<span class="lit-ecl">● eclipse</span>';
+    document.getElementById('iFoot').innerHTML = s.footKm ? 'r ≈ '+Math.round(s.footKm).toLocaleString('pt-BR')+' <small>km</small>' : '-';
+  }
 }
 
 /* ============================================================
-   6) rótulos 3D (selecionado + estações)
+   8) rótulos 3D (selecionado + estações)
    ============================================================ */
 const labelLayer=document.createElement('div');
 labelLayer.style.cssText='position:absolute;inset:0;pointer-events:none;z-index:20';
+const _lv = new THREE.Vector3();
 function projectLabels(){
-  if(view!=='3d') return;
   const host=document.getElementById('view3d');
   if(!labelLayer.parentNode) host.appendChild(labelLayer);
   const targets=[];
-  if(selected) targets.push(selected);
-  for(const s of visible){ if((s.cat==='iss'||s.cat==='css') && s!==selected) targets.push(s); }
-  // recicla divs
+  if(selected) targets.push({s:selected, p:selPos});
+  const dt=(simTime.getTime()-tRef)/1000;
+  for(const s of visible){
+    if((s.cat==='iss'||s.cat==='css') && s!==selected && s.ok){
+      targets.push({s, p:kepScene(s, dt, gmstNow, new THREE.Vector3())});
+    }
+  }
   while(labelLayer.children.length<targets.length){
     const d=document.createElement('div');
     d.style.cssText='position:absolute;font:600 10px "JetBrains Mono",monospace;color:#eaf3ff;white-space:nowrap;'
-      +'transform:translate(-50%,-160%);text-shadow:0 0 6px #000,0 1px 2px #000;padding:1px 5px;'
-      +'border:1px solid var(--line2);border-radius:5px;background:rgba(6,10,18,.6)';
+      +'transform:translate(-50%,-190%);text-shadow:0 0 6px #000,0 1px 2px #000;padding:1px 6px;'
+      +'border:1px solid var(--line2);border-radius:5px;background:rgba(6,10,18,.62)';
     labelLayer.appendChild(d);
   }
   for(let i=0;i<labelLayer.children.length;i++){
     const d=labelLayer.children[i];
     if(i>=targets.length){ d.style.display='none'; continue; }
-    const s=targets[i];
-    const v=new THREE.Vector3(s.ecef.x*SCALE, s.ecef.z*SCALE, -s.ecef.y*SCALE);
-    const cam=v.clone().project(camera);
-    if(cam.z>1){ d.style.display='none'; continue; }
+    const {s,p}=targets[i];
+    const cam=_lv.copy(p).project(camera);
+    if(cam.z>1 || occluded(p)){ d.style.display='none'; continue; }
     d.style.display='block';
     d.textContent=s.name.replace(/\s*\(.*\)/,'');
     d.style.left=((cam.x*.5+.5)*host.clientWidth)+'px';
     d.style.top=((-cam.y*.5+.5)*host.clientHeight)+'px';
-    d.style.color = s===selected ? '#fff' : '#cfe6ff';
+    d.style.borderColor = s===selected ? CLASS_COLORS[s.cls].css : 'var(--line2)';
   }
 }
 
 /* ============================================================
-   7) UI
+   9) UI
    ============================================================ */
 function buildUI(){
-  // classes
   const cr=document.getElementById('classRow');
   for(const k of ['LEO','POLAR','MEO','GEO','HEO']){
     const c=CLASS_COLORS[k];
@@ -972,7 +1731,6 @@ function buildUI(){
     el.onclick=()=>{ classOn[k]=!classOn[k]; el.classList.toggle('off',!classOn[k]); rebuild(); };
     cr.appendChild(el);
   }
-  // categorias
   const catRow=document.getElementById('catRow');
   for(const k in CATS){
     const cat=CATS[k];
@@ -989,7 +1747,7 @@ function classFull(k){return {LEO:'órbita baixa',POLAR:'polar / heliossíncrona
 function toggleCat(k){
   const cat=CATS[k]; cat.on=!cat.on;
   setSwitch(k, cat.on?'on':'off');
-  if(cat.on && !cat.loaded){ loadCat(k,true); }
+  if(cat.on && !cat.loaded){ loadCat(k); }
   else { rebuild(); }
 }
 function setSwitch(k,state){
@@ -1002,17 +1760,21 @@ function updateCounts(){
   const byCat={},byCls={LEO:0,POLAR:0,MEO:0,GEO:0,HEO:0};
   for(const s of sats){ byCat[s.cat]=(byCat[s.cat]||0)+1; }
   for(const s of visible){ byCls[s.cls]++; }
-  for(const k in CATS){ const e=document.getElementById('cnt-'+k); if(e) e.textContent=byCat[k]?byCat[k]:''; }
-  for(const k in byCls){ const e=document.getElementById('cls-'+k); if(e) e.textContent=byCls[k]; }
-  document.getElementById('objCount').textContent=visible.length;
+  for(const k in CATS){ const e=document.getElementById('cnt-'+k); if(e) e.textContent=byCat[k]?byCat[k].toLocaleString('pt-BR'):''; }
+  for(const k in byCls){ const e=document.getElementById('cls-'+k); if(e) e.textContent=byCls[k].toLocaleString('pt-BR'); }
+  document.getElementById('objCount').textContent=visible.length.toLocaleString('pt-BR');
 }
-function flagSource(ok){
+function setSrc(kind, text){
   const dot=document.getElementById('srcStatus'), txt=document.getElementById('srcText');
+  dot.className = kind==='ok'?'src-ok':kind==='busy'?'src-busy':'src-bad';
+  txt.textContent = text;
+}
+function flagSource(ok, from){
   const live=document.getElementById('hdrLed');
   live.classList.toggle('off',!ok);
   live.textContent = ok ? 'LIVE' : 'OFFLINE';
-  if(ok){ dot.className='src-ok'; txt.textContent='CelesTrak · ao vivo'; }
-  else { dot.className='src-bad'; txt.textContent='offline · dados de exemplo'; }
+  if(ok) setSrc('ok', from==='cache' ? 'CelesTrak · cache local' : 'CelesTrak · ao vivo');
+  else setSrc('bad', 'offline · dados de exemplo');
 }
 
 /* tempo */
@@ -1020,20 +1782,22 @@ function fmtUTC(d){return d.toISOString().substr(11,8);}
 function fmtFull(d){return d.toISOString().replace('T',' ').substr(0,19)+' UTC';}
 function setSpeed(i){ i=Math.max(0,Math.min(SPEEDS.length-1,i)); document.getElementById('speed').value=i;
   speed=SPEEDS[i]; document.getElementById('speedV').textContent=speed>=3600?(speed/3600)+'h/s':(speed+'×'); }
+function togglePause(){ paused=!paused; lastReal=performance.now();
+  document.getElementById('playpause').innerHTML=paused?'▶ RETOMAR':'❚❚ PAUSAR'; }
 
 function wireControls(){
   document.getElementById('btn3d').onclick=()=>setView('3d');
   document.getElementById('btn2d').onclick=()=>setView('2d');
   document.getElementById('menuBtn').onclick=()=>document.getElementById('sidebar').classList.toggle('open');
   document.getElementById('iClose').onclick=closeInfo;
-  document.getElementById('playpause').onclick=()=>{ paused=!paused; lastReal=performance.now();
-    document.getElementById('playpause').innerHTML=paused?'▶ RETOMAR':'❚❚ PAUSAR'; };
+  document.getElementById('bFollow').onclick=()=>setFollow(!follow);
+  document.getElementById('bFoot').onclick=()=>setFoot(!showFoot);
+  document.getElementById('playpause').onclick=togglePause;
   document.getElementById('nowBtn').onclick=()=>{ simTime=new Date(); setSpeed(0); };
   document.getElementById('rew').onclick=()=>setSpeed(+document.getElementById('speed').value-1);
   document.getElementById('fwd').onclick=()=>setSpeed(+document.getElementById('speed').value+1);
   document.getElementById('speed').oninput=e=>setSpeed(+e.target.value);
   document.getElementById('refresh').onclick=refreshAll;
-  // busca
   const sb=document.getElementById('search'), rs=document.getElementById('results');
   sb.oninput=()=>{
     const q=sb.value.trim().toLowerCase();
@@ -1041,12 +1805,19 @@ function wireControls(){
     const hits=sats.filter(s=>s.name.toLowerCase().includes(q)||String(s.satnum).includes(q)).slice(0,40);
     rs.innerHTML=hits.map(s=>`<div class="ritem" data-id="${s.satnum}">
       <span class="d" style="background:${CLASS_COLORS[s.cls].css}"></span>
-      <span class="nm">${s.name}</span><span class="cl">${s.cls}</span></div>`).join('')||'<div class="ritem">sem resultados</div>';
+      <span class="nm">${esc(s.name)}</span><span class="cl">${s.cls}</span></div>`).join('')||'<div class="ritem">sem resultados</div>';
     rs.classList.add('show');
     rs.querySelectorAll('.ritem[data-id]').forEach(el=>el.onclick=()=>{
       const s=sats.find(x=>x.satnum==el.dataset.id); if(s){ ensureVisible(s); select(s); rs.classList.remove('show'); sb.value=s.name; }
     });
   };
+  window.addEventListener('keydown', ev=>{
+    if(ev.target && /INPUT|TEXTAREA/.test(ev.target.tagName)) return;
+    if(ev.key==='Escape') closeInfo();
+    else if(ev.key==='f' || ev.key==='F'){ if(selected) setFollow(!follow); }
+    else if(ev.key==='c' || ev.key==='C'){ if(selected) setFoot(!showFoot); }
+    else if(ev.key===' '){ ev.preventDefault(); togglePause(); }
+  });
 }
 function ensureVisible(s){ CATS[s.cat].on=true; setSwitch(s.cat,'on'); classOn[s.cls]=true;
   document.querySelector(`.classchip[data-k="${s.cls}"]`)?.classList.remove('off'); rebuild(); }
@@ -1057,38 +1828,38 @@ function setView(v){
   document.getElementById('btn2d').classList.toggle('on',v==='2d');
   document.getElementById('view3d').style.display=v==='3d'?'block':'none';
   document.getElementById('view2d').style.display=v==='2d'?'block':'none';
-  selMarker.visible=(v==='3d'&&!!selected); trailLine.visible=(v==='3d'&&!!selected);
+  tipEl.style.display='none'; hovered=null;
+  setSelVisibility();
   if(v==='2d'){ if(!map) initMap(); setTimeout(()=>{map.invalidateSize();sizeMapCanvas();drawMap();
     if(selected) buildTrack(selected);},60); }
-  else { if(trackLine){ map.removeLayer(trackLine); trackLine=null; } if(selected) buildTrail(selected); }
+  else { if(trackLine){ map.removeLayer(trackLine); trackLine=null; } onResize(); }
 }
 
 async function refreshAll(){
-  for(const k in CATS){ if(CATS[k].on){ CATS[k].loaded=false; await loadCat(k); } }
+  await Promise.all(Object.keys(CATS).filter(k=>CATS[k].on).map(k=>loadCat(k,true)));
 }
 
 /* ============================================================
-   8) boot
+   10) boot
    ============================================================ */
 async function boot(){
   const loader = document.getElementById('loader');
   const hide = ()=>loader.classList.add('hide');
-  const failsafe = setTimeout(hide, 6000);   // nunca prende na tela de carregamento
+  const failsafe = setTimeout(hide, 6000);
 
   try{
     if(typeof THREE==='undefined' || typeof satellite==='undefined' || typeof L==='undefined')
       throw new Error('bibliotecas externas não carregaram (Three.js / satellite.js / Leaflet). Verifique a conexão e recarregue.');
 
-    buildUI(); wireControls(); setSpeed(0);   // tempo real (1x) por padrão
+    buildUI(); wireControls(); setSpeed(0);
     initThree();
-    setInterval(updatePositions, 120);
 
-    // popula categorias ligadas com dados de exemplo (UI viva no 1º frame)
+    // popula categorias ligadas com dados de exemplo (UI viva no 1º quadro)
     for(const k in CATS){
       if(!CATS[k].on) continue;
       let raw = parseTLE(FALLBACK_TLE);
       raw = CATS[k].filter ? raw.filter(r=>CATS[k].filter(r.name)) : raw.filter(r=>guessCat(r.name)===k);
-      ingest(raw, k);
+      ingest(raw, k, true);
     }
     rebuild();
   }catch(e){
@@ -1097,16 +1868,16 @@ async function boot(){
     s.innerHTML = 'falha ao iniciar:<br>'+e.message;
     s.style.color = 'var(--red)';
     clearTimeout(failsafe);
-    setTimeout(hide, 4000);   // mostra o motivo, depois libera a tela
+    setTimeout(hide, 4000);
     return;
   }
 
   clearTimeout(failsafe);
   hide();
 
-  // busca ao vivo das categorias ligadas por padrão
-  setLoad('conectando ao CelesTrak…');
-  for(const k in CATS){ if(CATS[k].on){ await loadCat(k); } }
+  // busca ao vivo: grupos pequenos primeiro, Starlink por último
+  const order = Object.keys(CATS).filter(k=>CATS[k].on).sort((a,b)=>(a==='starlink')-(b==='starlink'));
+  for(const k of order){ await loadCat(k); }
 }
 
 window.addEventListener('load', boot);
