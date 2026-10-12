@@ -560,46 +560,90 @@ function ingest(raw, catKey, fb){
   }
 }
 
-/* ---------- cache dos TLEs (Cache API, não ocupa o localStorage do domínio) ---------- */
-const CACHE_NAME = 'sat-commander-tle-v1';
+/* ---------- fontes dos TLEs ----------
+   O CelesTrak atualiza os dados a cada 2 h e responde HTTP 403 a quem baixa o mesmo
+   grupo de novo antes disso (e pode bloquear o IP). Numa sala de aula, todas as máquinas
+   saem pelo mesmo IP. Por isso a ordem é:
+     1) cache local do navegador (Cache API) com menos de 2 h
+     2) espelho no próprio GitHub (branch tle-data, atualizado pela Action a cada 3 h)
+     3) CelesTrak ao vivo (para no primeiro erro, como pede a política de uso)
+     4) qualquer cópia antiga (espelho ou cache)
+     5) dados de exemplo embutidos                                                    */
+const CACHE_NAME = 'sat-commander-tle-v2';
+const MIRROR = 'https://raw.githubusercontent.com/rmayormartins/sat-commander/tle-data/';
+const MIRROR_MAX_AGE = 12*3600e3;
+let celestrakBlocked = false, mirrorMetaP = null;
+const catSrc = {};               // categoria -> {from, t}
+
 async function cacheGet(url){
   try{
     if(!('caches' in window)) return null;
     const c = await caches.open(CACHE_NAME); const r = await c.match(url);
     if(!r) return null;
-    return {t:+(r.headers.get('x-fetched')||0), txt:await r.text()};
+    return {t:+(r.headers.get('x-fetched')||0), dt:+(r.headers.get('x-data')||0),
+      from:r.headers.get('x-from')||'live', txt:await r.text()};
   }catch(e){ return null; }
 }
-async function cachePut(url, txt){
+async function cachePut(url, txt, dataT, from){
   try{
     if(!('caches' in window)) return;
     const c = await caches.open(CACHE_NAME);
-    await c.put(url, new Response(txt, {headers:{'content-type':'text/plain','x-fetched':String(Date.now())}}));
+    await c.put(url, new Response(txt, {headers:{'content-type':'text/plain',
+      'x-fetched':String(Date.now()), 'x-data':String(dataT||Date.now()), 'x-from':from||'live'}}));
   }catch(e){}
 }
+function mirrorMeta(force){
+  if(force || !mirrorMetaP){
+    mirrorMetaP = fetch(MIRROR+'meta.json'+(force?'?t='+Date.now():''))
+      .then(r=>r.ok?r.json():null).catch(()=>null);
+  }
+  return mirrorMetaP;
+}
+async function getTLE(url, opts){
+  const res = await fetch(url, opts);
+  if(!res.ok){ const e=new Error('HTTP '+res.status); e.status=res.status; throw e; }
+  const txt = await res.text();
+  if(!txt || !/^1 /m.test(txt)) throw new Error('resposta sem TLEs');
+  return txt;
+}
 
-/* fetch de um grupo do CelesTrak (com cache e de-duplicação) */
-const inflight = {};
+/* um download por grupo e por sessão (ISS, Tiangong e "estação completa" dividem o grupo stations) */
+const groupMemo = {};
 function fetchGroup(group, force){
-  const key = group+(force?':f':'');
-  if(inflight[key]) return inflight[key];
-  const url = `https://celestrak.org/NORAD/elements/gp.php?GROUP=${group}&FORMAT=tle`;
-  inflight[key] = (async()=>{
-    const cached = await cacheGet(url);
-    if(!force && cached && Date.now()-cached.t < TLE_TTL) return {txt:cached.txt, from:'cache'};
-    try{
-      const res = await fetch(url, {cache:'no-store'});
-      if(!res.ok) throw new Error('HTTP '+res.status);
-      const txt = await res.text();
-      if(!txt || !/^1 /m.test(txt)) throw new Error('vazio');
-      cachePut(url, txt);
-      return {txt, from:'live'};
-    }catch(e){
-      if(cached && cached.txt) return {txt:cached.txt, from:'stale'};
-      throw e;
+  if(groupMemo[group]) return groupMemo[group];      // "ATUALIZAR" limpa o memo antes de forçar
+  const p = (async()=>{
+    const ctUrl = `https://celestrak.org/NORAD/elements/gp.php?GROUP=${group}&FORMAT=tle`;
+    const cached = await cacheGet(ctUrl);
+    if(!force && cached && Date.now()-cached.t < TLE_TTL)
+      return {txt:cached.txt, from:'cache', t:cached.dt||cached.t};
+
+    const meta = await mirrorMeta(force);
+    const gm = meta && meta.groups && meta.groups[group];
+    const mt = gm ? Date.parse(gm.t) : 0;
+    const fromMirror = async()=>{
+      const txt = await getTLE(MIRROR+group+'.txt'+(force?'?t='+Date.now():''));
+      await cachePut(ctUrl, txt, mt, 'mirror');
+      return {txt, from:'mirror', t:mt};
+    };
+    if(gm && Date.now()-mt < MIRROR_MAX_AGE){ try{ return await fromMirror(); }catch(e){} }
+
+    if(!celestrakBlocked){
+      try{
+        const txt = await getTLE(ctUrl, {cache:'no-store'});
+        await cachePut(ctUrl, txt, Date.now(), 'live');
+        return {txt, from:'live', t:Date.now()};
+      }catch(e){
+        celestrakBlocked = true;   // política do CelesTrak: parar após qualquer resposta != 200
+        console.warn('[SAT-COMMANDER] CelesTrak recusou ('+e.message+'); sem novas consultas nesta sessão.');
+      }
     }
-  })().finally(()=>{ delete inflight[key]; });
-  return inflight[key];
+    if(gm){ try{ return await fromMirror(); }catch(e){} }
+    if(cached && cached.txt) return {txt:cached.txt, from:'stale', t:cached.dt||cached.t};
+    throw new Error('sem fonte de TLE para '+group);
+  })();
+  groupMemo[group] = p;
+  p.catch(()=>{ if(groupMemo[group]===p) delete groupMemo[group]; });
+  return p;
 }
 
 /* carrega/recarrega uma categoria */
@@ -608,24 +652,26 @@ async function loadCat(key, force){
   setSwitch(key,'busy');
   setSrc('busy', 'baixando '+cat.label+'…');
   try{
-    const {txt, from} = await fetchGroup(cat.group, force);
+    const {txt, from, t} = await fetchGroup(cat.group, force);
     let raw = parseTLE(txt);
     if(cat.filter) raw = raw.filter(r=>cat.filter(r.name));
     sats = sats.filter(s=>s.cat!==key);   // troca exemplo/antigo por dado fresco
     ingest(raw, key);
     cat.loaded = true;
-    flagSource(from!=='stale', from);
+    catSrc[key] = {from, t};
   }catch(e){
+    console.warn('[SAT-COMMANDER]', cat.label+':', e.message);
     if(!cat.loaded){
       let raw = parseTLE(FALLBACK_TLE);
       raw = cat.filter ? raw.filter(r=>cat.filter(r.name)) : raw.filter(r=>guessCat(r.name)===key);
       sats = sats.filter(s=>s.cat!==key);
       ingest(raw, key, true);
+      catSrc[key] = {from:'sample', t:0};
     }
-    flagSource(false);
   }
   setSwitch(key, cat.on?'on':'off');
   rebuild();
+  refreshSrcStatus();
 }
 
 /* heurística para distribuir o fallback nas categorias certas */
@@ -1769,12 +1815,31 @@ function setSrc(kind, text){
   dot.className = kind==='ok'?'src-ok':kind==='busy'?'src-busy':'src-bad';
   txt.textContent = text;
 }
-function flagSource(ok, from){
+function ageTxt(t){
+  if(!t) return '';
+  const m=Math.max(0,Math.round((Date.now()-t)/60000));
+  return m<60 ? 'há '+m+' min' : 'há '+Math.floor(m/60)+' h'+(m%60?(' '+String(m%60).padStart(2,'0')):'');
+}
+/* resumo honesto da origem dos dados, por categoria ligada */
+function refreshSrcStatus(){
+  const on = Object.keys(CATS).filter(k=>CATS[k].on && catSrc[k]);
+  if(!on.length) return;
   const live=document.getElementById('hdrLed');
-  live.classList.toggle('off',!ok);
-  live.textContent = ok ? 'LIVE' : 'OFFLINE';
-  if(ok) setSrc('ok', from==='cache' ? 'CelesTrak · cache local' : 'CelesTrak · ao vivo');
-  else setSrc('bad', 'offline · dados de exemplo');
+  const sample = on.filter(k=>catSrc[k].from==='sample');
+  const real = on.filter(k=>catSrc[k].from!=='sample');
+  live.classList.toggle('off', sample.length>0);
+  live.textContent = !sample.length ? 'LIVE' : real.length ? 'PARCIAL' : 'OFFLINE';
+  if(sample.length){
+    setSrc('bad', 'sem dados reais: '+sample.map(k=>CATS[k].label).join(', '));
+    return;
+  }
+  const kinds = new Set(real.map(k=>catSrc[k].from));
+  const name = kinds.has('live') && kinds.size===1 ? 'CelesTrak ao vivo'
+    : kinds.has('mirror') && kinds.size===1 ? 'CelesTrak via espelho GitHub'
+    : kinds.size===1 && kinds.has('cache') ? 'CelesTrak · cache local'
+    : 'CelesTrak';
+  const oldest = Math.min(...real.map(k=>catSrc[k].t||Date.now()));
+  setSrc(kinds.has('stale')?'busy':'ok', name+' · dados '+ageTxt(oldest));
 }
 
 /* tempo */
@@ -1836,7 +1901,9 @@ function setView(v){
 }
 
 async function refreshAll(){
-  await Promise.all(Object.keys(CATS).filter(k=>CATS[k].on).map(k=>loadCat(k,true)));
+  const ks = Object.keys(CATS).filter(k=>CATS[k].on);
+  for(const g of new Set(ks.map(k=>CATS[k].group))) delete groupMemo[g];
+  await Promise.all(ks.map(k=>loadCat(k,true)));
 }
 
 /* ============================================================

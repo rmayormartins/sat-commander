@@ -1,0 +1,114 @@
+# Espelho dos TLEs do CelesTrak para o SAT·COMMANDER
+#
+# O CelesTrak atualiza os dados a cada 2 h e responde HTTP 403 (podendo bloquear o IP)
+# a quem baixa o mesmo grupo de novo antes disso. Uma sala de aula inteira sai pelo
+# mesmo IP, então cada navegador baixando direto do CelesTrak não funciona.
+# Esta Action baixa os grupos uma vez a cada 3 h e publica na branch "tle-data"
+# (um único commit, sobrescrito a cada execução, sem crescer o histórico).
+# A página lê de https://raw.githubusercontent.com/<repo>/tle-data/<grupo>.txt
+
+name: Espelho de TLEs (CelesTrak)
+
+on:
+  schedule:
+    - cron: '23 */3 * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/tle-mirror.yml']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: tle-mirror
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      REPO: ${{ github.repository }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Recupera o espelho atual (branch tle-data)
+        run: |
+          mkdir data && cd data && git init -q
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git"
+          if git fetch -q --depth 1 origin tle-data 2>/dev/null; then
+            git checkout -q FETCH_HEAD -- .
+            echo "espelho anterior recuperado"
+          else
+            echo "primeira execução: branch tle-data será criada"
+          fi
+
+      - name: Baixa os grupos do CelesTrak (para no primeiro erro, como pede a política de uso)
+        working-directory: data
+        run: |
+          python3 - <<'PY'
+          import json, os, time, datetime, urllib.request, urllib.error
+
+          # grupos ligados por padrão primeiro, para serem os mais frescos
+          GROUPS = ("stations starlink geo gps-ops molniya weather visual oneweb iridium-NEXT "
+                    "cubesat last-30-days glo-ops galileo beidou science").split()
+          UA = "sat-commander-mirror/1.0 (+https://github.com/%s)" % os.environ["REPO"]
+          utc = lambda: datetime.datetime.now(datetime.timezone.utc)
+          iso = lambda d: d.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+          meta = {}
+          if os.path.exists("meta.json"):
+              try:
+                  meta = json.load(open("meta.json"))
+              except Exception:
+                  meta = {}
+          meta.setdefault("groups", {})
+
+          for g in GROUPS:
+              old = meta["groups"].get(g)
+              if old and os.path.exists(g + ".txt"):
+                  age = utc() - datetime.datetime.fromisoformat(old["t"].replace("Z", "+00:00"))
+                  if age.total_seconds() < 2 * 3600:
+                      print(f"{g}: baixado há {age}, ainda dentro da janela de 2 h, pulando")
+                      continue
+              url = f"https://celestrak.org/NORAD/elements/gp.php?GROUP={g}&FORMAT=tle"
+              try:
+                  req = urllib.request.Request(url, headers={"User-Agent": UA})
+                  with urllib.request.urlopen(req, timeout=120) as r:
+                      txt = r.read().decode("utf-8", "replace")
+              except urllib.error.HTTPError as e:
+                  print(f"{g}: HTTP {e.code}. Parando aqui, como pede a política do CelesTrak.")
+                  break
+              except Exception as e:
+                  print(f"{g}: erro {e!r}. Parando.")
+                  break
+              n = sum(1 for line in txt.splitlines() if line.startswith("1 "))
+              if n == 0:
+                  print(f"{g}: resposta sem TLEs ({txt[:120]!r}). Parando.")
+                  break
+              with open(g + ".txt", "w") as f:
+                  f.write(txt)
+              meta["groups"][g] = {"t": iso(utc()), "n": n}
+              print(f"{g}: {n} objetos")
+              time.sleep(3)
+
+          meta["updated"] = iso(utc())
+          json.dump(meta, open("meta.json", "w"), indent=1, sort_keys=True)
+          PY
+
+      - name: Publica (commit único na branch tle-data)
+        working-directory: data
+        run: |
+          if [ ! -f meta.json ] || ! ls *.txt >/dev/null 2>&1; then
+            echo "nada para publicar"; exit 0
+          fi
+          printf '%s\n' "# tle-data" "" \
+            "Espelho automático dos TLEs do CelesTrak usado pelo SAT·COMMANDER." \
+            "Gerado pela Action .github/workflows/tle-mirror.yml a cada 3 h. Não edite à mão." \
+            "Fonte: https://celestrak.org (Dr. T.S. Kelso)." > README.md
+          git config user.name "github-actions[bot]"
+          git config user.email "41898599+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "TLEs $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push -q -f origin HEAD:tle-data
+          echo "publicado:"; cat meta.json
